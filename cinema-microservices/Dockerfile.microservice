@@ -1,0 +1,23 @@
+FROM maven:3.9.6-eclipse-temurin-17-alpine AS build
+WORKDIR /app
+
+# Copy the whole project structure to handle internal dependencies (cinema-common)
+COPY . .
+
+# Argument to specify which module to build
+ARG MODULE_NAME
+
+# Install cinema-common and then package the target module
+RUN mvn install -pl cinema-common -am -DskipTests
+RUN mvn package -pl ${MODULE_NAME} -am -DskipTests
+
+FROM eclipse-temurin:17-jre-alpine
+WORKDIR /app
+
+# Re-declare ARG in the second stage
+ARG MODULE_NAME
+COPY --from=build /app/${MODULE_NAME}/target/*.jar app.jar
+
+# Optimization: reduce memory footprint
+ENV JAVA_OPTS="-Xms256m -Xmx512m"
+ENTRYPOINT ["sh", "-c", "java $JAVA_OPTS -jar app.jar"]

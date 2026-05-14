@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Configuration status="WARN">
+    <!-- Định nghĩa các cấu hình hiển thị (Console, File) -->
+    <Appenders>
+        <Console name="Console" target="SYSTEM_OUT">
+            <!-- 
+              Định dạng Log (Pattern) có kết hợp OpenTelemetry:
+              %style{%d{yyyy-MM-dd HH:mm:ss.SSS}}{cyan} -> Hiển thị ngày giờ màu xanh ngọc
+              %highlight{%-5level} -> Hiển thị mức độ lỗi (INFO, ERROR) với màu sắc tự động
+              [%style{%t}{bright,blue}] -> Tên luồng xử lý (Thread) màu xanh biển sáng
+              %style{%logger{36}}{yellow} -> Tên Class đang chạy màu vàng
+              [traceId=%X{traceId} spanId=%X{spanId}] -> Tự động lấy ID từ OpenTelemetry (MDC)
+              %msg%n -> Tin nhắn Log
+            -->
+            <PatternLayout pattern="%style{%d{yyyy-MM-dd HH:mm:ss.SSS}}{cyan} %highlight{%-5level} [%style{%t}{bright,blue}] %style{%logger{36}}{yellow} : [traceId=%X{traceId} spanId=%X{spanId}] - %msg%n"/>
+        </Console>
+    </Appenders>
+
+    <!-- Định nghĩa mức độ Log cho các thư viện -->
+    <Loggers>
+        <!-- Giảm thiểu log rác từ Hibernate và Spring -->
+        <Logger name="org.springframework" level="info" additivity="false">
+            <AppenderRef ref="Console"/>
+        </Logger>
+        <Logger name="org.hibernate" level="warn" additivity="false">
+            <AppenderRef ref="Console"/>
+        </Logger>
+        <Logger name="org.hibernate.SQL" level="info" additivity="false">
+            <AppenderRef ref="Console"/>
+        </Logger>
+        
+        <!-- Log của dự án chúng ta (com.example.cinema) sẽ hiển thị ở mức DEBUG -->
+        <Logger name="com.example.cinema" level="debug" additivity="false">
+            <AppenderRef ref="Console"/>
+        </Logger>
+
+        <!-- Cấu hình mặc định cho tất cả các thư viện khác -->
+        <Root level="info">
+            <AppenderRef ref="Console"/>
+        </Root>
+    </Loggers>
+</Configuration>

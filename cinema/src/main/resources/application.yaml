@@ -1,0 +1,32 @@
+spring:
+  application:
+    name: cinema-service
+  jackson:
+    time-zone: ${APP_TIMEZONE}
+  jpa:
+    properties:
+      hibernate:
+        jdbc:
+          time_zone: ${APP_TIMEZONE}
+        default_schema: auth
+    hibernate:
+      ddl-auto: none
+    show-sql: false
+  flyway:
+    enabled: true
+    schemas: auth,catalog,cinema,scheduling,booking
+    create-schemas: true
+    baseline-on-migrate: true
+    repair-on-migrate: true
+  config:
+    import: "optional:file:../.env[.properties]"
+  profiles:
+    active: dev
+logging:
+  level:
+    org:
+      flywaydb: DEBUG
+    springframework:
+      boot:
+        autoconfigure:
+          flyway: DEBUG

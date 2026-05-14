@@ -1,0 +1,20 @@
+.gitignore# env
+.env
+
+# node
+node_modules/
+
+# angular
+.angular/
+dist/
+
+# java
+target/
+*.class
+
+# ide
+.idea/
+.vscode/
+
+# logs
+*.log

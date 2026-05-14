@@ -1,0 +1,1 @@
+ALTER TABLE scheduling.showtimes ADD COLUMN IF NOT EXISTS is_deleted BOOLEAN DEFAULT FALSE;

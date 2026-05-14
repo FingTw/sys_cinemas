@@ -1,0 +1,29 @@
+spring:
+  application:
+    name: cinema-scheduling
+  jackson:
+    time-zone: ${APP_TIMEZONE}
+  jpa:
+    properties:
+      hibernate:
+        jdbc:
+          time_zone: ${APP_TIMEZONE}
+        default_schema: scheduling
+    hibernate:
+      ddl-auto: none
+    show-sql: false
+  flyway:
+    enabled: true
+    schemas: scheduling
+    create-schemas: true
+    baseline-on-migrate: true
+    repair-on-migrate: true
+  config:
+    import: "optional:file:../.env[.properties]"
+  profiles:
+    active: dev
+logging:
+  level:
+    org.flywaydb: DEBUG
+    springframework.boot.autoconfigure.flyway: DEBUG
+

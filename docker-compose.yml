@@ -1,0 +1,218 @@
+x-resource-limits: &resource-limits
+  deploy:
+    resources:
+      limits:
+        cpus: "${DOCKER_CPU_LIMIT:-0.5}"
+        memory: "${DOCKER_RAM_LIMIT:-512M}"
+
+services:
+  # ─────────────────────────────────────────────────────────────
+  # INFRASTRUCTURE GROUP
+  # ─────────────────────────────────────────────────────────────
+  cinema-db:
+    image: postgres:16
+    container_name: cinema-postgres
+    profiles: [ "infra", "all" ]
+    environment:
+      POSTGRES_USER: ${DB_USERNAME:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres123}
+      POSTGRES_DB: cinema_db
+    ports:
+      - "${DB_PORT:-5432}:5432"
+    volumes:
+      - cinema_data:/var/lib/postgresql/data
+      - ./init-databases.sql:/docker-entrypoint-initdb.d/init-databases.sql
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U postgres" ]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - cinema-network
+    <<: *resource-limits
+
+  cinema-redis:
+    image: redis:7-alpine
+    container_name: cinema-redis
+    profiles: [ "infra", "all" ]
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    networks:
+      - cinema-network
+    <<: *resource-limits
+
+  cinema-keycloak:
+    image: quay.io/keycloak/keycloak:26.2.5
+    container_name: cinema-keycloak
+    profiles: [ "infra", "all" ]
+    command: start-dev
+    environment:
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://${DOCKER_DB_HOST:-cinema-db}:5432/cinema_db
+      KC_DB_SCHEMA: keycloak
+      KC_DB_USERNAME: ${DB_USERNAME:-postgres}
+      KC_DB_PASSWORD: ${DB_PASSWORD:-postgres123}
+      KC_BOOTSTRAP_ADMIN_USERNAME: ${KC_BOOTSTRAP_ADMIN_USERNAME:-admin}
+      KC_BOOTSTRAP_ADMIN_PASSWORD: ${KC_BOOTSTRAP_ADMIN_PASSWORD:-admin}
+      KC_HTTP_PORT: 8080
+      KC_HOSTNAME_STRICT: "false"
+      KC_PROXY_HEADERS: xforwarded
+      CINEMA_DB_URL: jdbc:postgresql://cinema-db:5432/cinema_db
+      CINEMA_DB_USERNAME: postgres
+      CINEMA_DB_PASSWORD: postgres123
+    ports:
+      - "8089:8080"
+    volumes:
+      - ./keycloak-theme:/opt/keycloak/themes
+      - ./cinema-keycloak-spi/target/cinema-keycloak-spi-1.0.0.jar:/opt/keycloak/providers/cinema-keycloak-spi.jar
+    depends_on:
+      cinema-db:
+        condition: service_healthy
+    networks:
+      - cinema-network
+    <<: *resource-limits
+
+  # ─────────────────────────────────────────────────────────────
+  # GATEWAY GROUP
+  # ─────────────────────────────────────────────────────────────
+  cinema-gateway:
+    build:
+      context: ./cinema-microservices
+      dockerfile: Dockerfile.runtime
+      args:
+        MODULE_NAME: cinema-gateway
+    container_name: cinema-gateway
+    profiles: [ "gateway", "all" ]
+    ports:
+      - "8080:8080"
+    env_file:
+      - .env
+    environment:
+      IAM_SERVICE_URL: http://cinema-iam:8081
+      CATALOG_SERVICE_URL: http://cinema-catalog:8082
+      FACILITY_SERVICE_URL: http://cinema-facility:8083
+      SCHEDULING_SERVICE_URL: http://cinema-scheduling:8084
+      BOOKING_SERVICE_URL: http://cinema-booking:8085
+      JAVA_OPTS: "-Xms128m -Xmx320m"
+    networks:
+      - cinema-network
+    <<: *resource-limits
+
+  # ─────────────────────────────────────────────────────────────
+  # APPLICATION MICROSERVICES GROUP
+  # ─────────────────────────────────────────────────────────────
+  cinema-iam:
+    build:
+      context: ./cinema-microservices
+      dockerfile: Dockerfile.runtime
+      args:
+        MODULE_NAME: cinema-iam
+    container_name: cinema-iam
+    profiles: [ "app", "all" ]
+    env_file:
+      - .env
+    environment:
+      DB_HOST: ${DOCKER_DB_HOST:-cinema-db}
+      REDIS_HOST: ${DOCKER_REDIS_HOST:-cinema-redis}
+      KEYCLOAK_ISSUER_URI: ${KEYCLOAK_ISSUER_URI_INTERNAL:-http://cinema-keycloak:8080/realms/cinema-realm}
+      JAVA_OPTS: "-Xms128m -Xmx320m"
+    depends_on:
+      cinema-db:
+        condition: service_healthy
+      cinema-keycloak:
+        condition: service_started
+    networks:
+      - cinema-network
+    <<: *resource-limits
+
+  cinema-catalog:
+    build:
+      context: ./cinema-microservices
+      dockerfile: Dockerfile.runtime
+      args:
+        MODULE_NAME: cinema-catalog
+    container_name: cinema-catalog
+    profiles: [ "app", "all" ]
+    env_file:
+      - .env
+    environment:
+      DB_HOST: ${DOCKER_DB_HOST:-cinema-db}
+      JAVA_OPTS: "-Xms128m -Xmx320m"
+    depends_on:
+      cinema-db:
+        condition: service_healthy
+    networks:
+      - cinema-network
+    <<: *resource-limits
+
+  cinema-facility:
+    build:
+      context: ./cinema-microservices
+      dockerfile: Dockerfile.runtime
+      args:
+        MODULE_NAME: cinema-facility
+    container_name: cinema-facility
+    profiles: [ "app", "all" ]
+    env_file:
+      - .env
+    environment:
+      DB_HOST: ${DOCKER_DB_HOST:-cinema-db}
+      JAVA_OPTS: "-Xms128m -Xmx320m"
+    depends_on:
+      cinema-db:
+        condition: service_healthy
+    networks:
+      - cinema-network
+    <<: *resource-limits
+
+  cinema-scheduling:
+    build:
+      context: ./cinema-microservices
+      dockerfile: Dockerfile.runtime
+      args:
+        MODULE_NAME: cinema-scheduling
+    container_name: cinema-scheduling
+    profiles: [ "app", "all" ]
+    env_file:
+      - .env
+    environment:
+      DB_HOST: ${DOCKER_DB_HOST:-cinema-db}
+      APP_SERVICES_CATALOG_URL: http://cinema-catalog:8082/api/v1/movies
+      APP_SERVICES_FACILITY_URL: http://cinema-facility:8083/api/v1/rooms
+      JAVA_OPTS: "-Xms128m -Xmx320m"
+    depends_on:
+      cinema-db:
+        condition: service_healthy
+    networks:
+      - cinema-network
+    <<: *resource-limits
+
+  cinema-booking:
+    build:
+      context: ./cinema-microservices
+      dockerfile: Dockerfile.runtime
+      args:
+        MODULE_NAME: cinema-booking
+    container_name: cinema-booking
+    profiles: [ "app", "all" ]
+    env_file:
+      - .env
+    environment:
+      DB_HOST: ${DOCKER_DB_HOST:-cinema-db}
+      APP_SERVICES_SCHEDULING_URL: http://cinema-scheduling:8084
+      APP_SERVICES_FACILITY_URL: http://cinema-facility:8083
+      APP_SERVICES_CATALOG_URL: http://cinema-catalog:8082
+      JAVA_OPTS: "-Xms128m -Xmx320m"
+    depends_on:
+      cinema-db:
+        condition: service_healthy
+    networks:
+      - cinema-network
+    <<: *resource-limits
+
+volumes:
+  cinema_data:
+
+networks:
+  cinema-network:
+    driver: bridge
