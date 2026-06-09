@@ -1,14 +1,17 @@
 package com.example.cinema.facility.infrastructure.database.entities;
 
 import jakarta.persistence.*;
-
 import org.hibernate.annotations.SQLDelete;
 import org.hibernate.annotations.SQLRestriction;
+import lombok.Getter;
+import lombok.Setter;
 
 @Entity
 @Table(name = "seats", schema = "facility")
 @SQLDelete(sql = "UPDATE facility.seats SET is_deleted = true WHERE id=?")
 @SQLRestriction("is_deleted = false")
+@Getter
+@Setter
 public class SeatJpaEntity {
     @jakarta.persistence.Column(name = "is_deleted")
     private boolean isDeleted = false;
@@ -90,53 +93,5 @@ public class SeatJpaEntity {
         public SeatJpaEntity build() {
             return new SeatJpaEntity(id, roomId, rowLabel, colNumber, type, status);
         }
-    }
-
-    public String getId() {
-        return id;
-    }
-
-    public void setId(String id) {
-        this.id = id;
-    }
-
-    public String getRoomId() {
-        return roomId;
-    }
-
-    public void setRoomId(String roomId) {
-        this.roomId = roomId;
-    }
-
-    public String getRowLabel() {
-        return rowLabel;
-    }
-
-    public void setRowLabel(String rowLabel) {
-        this.rowLabel = rowLabel;
-    }
-
-    public Integer getColNumber() {
-        return colNumber;
-    }
-
-    public void setColNumber(Integer colNumber) {
-        this.colNumber = colNumber;
-    }
-
-    public String getType() {
-        return type;
-    }
-
-    public void setType(String type) {
-        this.type = type;
-    }
-
-    public String getStatus() {
-        return status;
-    }
-
-    public void setStatus(String status) {
-        this.status = status;
     }
 }

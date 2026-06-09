@@ -19,6 +19,15 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
+import com.example.cinema.common.filter.AesDecryptionFilter;
+import com.example.cinema.common.filter.AesEncryptionResponseFilter;
+import com.example.cinema.common.filter.IdempotencyFilter;
+import com.example.cinema.common.filter.XApiKeyFilter;
+import com.example.cinema.common.filter.LoggingFilter;
+import com.example.cinema.common.security.ApiKeyFilter;
+import com.example.cinema.common.security.JwtAuthenticationFilter;
+import com.example.cinema.common.security.SecurityPermissions;
+import com.example.cinema.common.security.SecurityRoles;
 
 @Configuration
 @EnableWebSecurity
@@ -28,10 +37,20 @@ public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
     private final ApiKeyFilter apiKeyFilter;
+    private final AesDecryptionFilter aesDecryptionFilter;
+    private final AesEncryptionResponseFilter aesEncryptionResponseFilter;
+    private final IdempotencyFilter idempotencyFilter;
+    private final XApiKeyFilter xApiKeyFilter;
 
-    public SecurityConfig(JwtAuthenticationFilter jwtAuthenticationFilter, ApiKeyFilter apiKeyFilter) {
+    public SecurityConfig(JwtAuthenticationFilter jwtAuthenticationFilter, ApiKeyFilter apiKeyFilter,
+                          AesDecryptionFilter aesDecryptionFilter, AesEncryptionResponseFilter aesEncryptionResponseFilter,
+                          IdempotencyFilter idempotencyFilter, XApiKeyFilter xApiKeyFilter) {
         this.jwtAuthenticationFilter = jwtAuthenticationFilter;
         this.apiKeyFilter = apiKeyFilter;
+        this.aesDecryptionFilter = aesDecryptionFilter;
+        this.aesEncryptionResponseFilter = aesEncryptionResponseFilter;
+        this.idempotencyFilter = idempotencyFilter;
+        this.xApiKeyFilter = xApiKeyFilter;
     }
 
     @Value("${app.security.cors.allowed-origins}")
@@ -47,9 +66,9 @@ public class SecurityConfig {
                 // 3. Phan quyen Endpoint
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/v1/auth/login", "/api/v1/auth/register", "/api/v1/auth/public-key",
-                                "/api/v1/auth/refresh-token")
+                                "/api/v1/auth/refresh-token", "/api/v1/auth/password-policy")
                         .permitAll()
-                        .requestMatchers("/api/v1/movies/**").permitAll() // Xem danh sach phim cong khai
+                        .requestMatchers("/api/v1/movies/**", "/api/v1/featured-movies/**").permitAll() // Xem danh sach phim cong khai
                         .requestMatchers("/api/v1/showtimes/**").permitAll() // Xem suat chieu cong khai
                         .requestMatchers(HttpMethod.GET, "/api/v1/rooms/**").permitAll()
                         .requestMatchers("/api/v1/vnpay/**").permitAll() // VNPay Callback
@@ -84,8 +103,12 @@ public class SecurityConfig {
                         // Facility Management (Rooms, Seats)
                         .requestMatchers(HttpMethod.GET, "/api/v1/admin/facilities/**")
                         .hasAuthority(SecurityPermissions.FACILITY_READ)
-                        .requestMatchers("/api/v1/admin/facilities/**")
-                        .hasAuthority(SecurityPermissions.FACILITY_MANAGE)
+                        .requestMatchers(HttpMethod.POST, "/api/v1/admin/facilities/**")
+                        .hasAuthority(SecurityPermissions.FACILITY_CREATE)
+                        .requestMatchers(HttpMethod.PUT, "/api/v1/admin/facilities/**")
+                        .hasAuthority(SecurityPermissions.FACILITY_UPDATE)
+                        .requestMatchers(HttpMethod.DELETE, "/api/v1/admin/facilities/**")
+                        .hasAuthority(SecurityPermissions.FACILITY_DELETE)
 
                         // Orders & Statistics
                         .requestMatchers("/api/v1/admin/**")
@@ -96,13 +119,17 @@ public class SecurityConfig {
                         .requestMatchers("/api/v1/bookings/**").authenticated()
                         // Profile: User xem/cap nhat thong tin ca nhan (authenticated)
                         .requestMatchers("/api/v1/profile/**").authenticated()
+                        .requestMatchers("/api/v1/internal/**").permitAll() // Internal calls between microservices
                         .anyRequest().authenticated() // Cac API khac (dat ve, xem phim...) bat buoc phai co Token
                 )
                 // 4. Co che Stateless
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-                // 5. Them filter xac thuc
-                .addFilterBefore(apiKeyFilter, UsernamePasswordAuthenticationFilter.class)
-                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
+                // 5. Them filter xac thuc & bao mat
+                .addFilterBefore(idempotencyFilter, UsernamePasswordAuthenticationFilter.class)
+                .addFilterBefore(xApiKeyFilter, UsernamePasswordAuthenticationFilter.class)
+                .addFilterBefore(aesDecryptionFilter, UsernamePasswordAuthenticationFilter.class)
+                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
+                .addFilterAfter(aesEncryptionResponseFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }

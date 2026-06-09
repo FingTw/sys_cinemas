@@ -3,27 +3,27 @@ package com.example.cinema.booking.presentation.controllers;
 import com.example.cinema.booking.application.dto.BookingDetailResponse;
 import com.example.cinema.booking.application.dto.BookingResponse;
 import com.example.cinema.booking.application.dto.CreateBookingRequest;
+import com.example.cinema.booking.application.ports.in.BookingService;
 import com.example.cinema.booking.application.ports.in.BookingQueryUseCase;
-import com.example.cinema.booking.application.usecases.BookingUseCase;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
-
 import java.util.List;
+import lombok.RequiredArgsConstructor;import org.camunda.bpm.engine.RuntimeService;
+import org.camunda.bpm.engine.runtime.ProcessInstance;
+import java.util.Map;
+import java.util.HashMap;
 
 @RestController
 @RequestMapping("/api/v1/bookings")
+@RequiredArgsConstructor
 public class BookingController {
 
-    private final BookingUseCase bookingUseCase;
+    private final BookingService bookingService;
     private final BookingQueryUseCase bookingQueryUseCase;
-
-    public BookingController(BookingUseCase bookingUseCase, BookingQueryUseCase bookingQueryUseCase) {
-        this.bookingUseCase = bookingUseCase;
-        this.bookingQueryUseCase = bookingQueryUseCase;
-    }
+    private final RuntimeService runtimeService;
 
     /**
      * Tạo đơn đặt vé mới.
@@ -35,11 +35,43 @@ public class BookingController {
             Authentication authentication,
             HttpServletRequest httpServletRequest) {
 
-        // Lay username/ID tu JWT token
-        String userId = authentication.getName();
+        // Lay ID tu JWT token
+        String userId = extractUserIdFromToken(httpServletRequest.getHeader("Authorization"));
         String ipAddress = httpServletRequest.getRemoteAddr();
 
-        return ResponseEntity.ok(bookingUseCase.createBooking(request, userId, ipAddress));
+        // Chuẩn bị biến quy trình cho Camunda
+        Map<String, Object> variables = new HashMap<>();
+        variables.put("showtimeId", request.getShowtimeId());
+        variables.put("seatIds", request.getSeatIds());
+        variables.put("userId", userId);
+        variables.put("ipAddress", ipAddress);
+        
+        String method = request.getPaymentMethod();
+        if (method == null || method.trim().isEmpty()) {
+            method = "ONLINE";
+        }
+        variables.put("paymentMethod", method.toUpperCase());
+
+        // Khởi động Process Instance
+        ProcessInstance processInstance = runtimeService.startProcessInstanceByKey(
+                "movie-ticket-booking-process",
+                variables
+        );
+
+        // Lấy kết quả từ biến quy trình sau khi các Service Tasks đầu chạy xong
+        String bookingId = (String) runtimeService.getVariable(processInstance.getId(), "bookingId");
+        String paymentUrl = (String) runtimeService.getVariable(processInstance.getId(), "paymentUrl");
+        java.math.BigDecimal totalAmount = (java.math.BigDecimal) runtimeService.getVariable(processInstance.getId(), "totalAmount");
+
+        BookingResponse response = BookingResponse.builder()
+                .id(bookingId)
+                .seatIds(request.getSeatIds())
+                .paymentUrl(paymentUrl)
+                .totalPrice(totalAmount)
+                .status("PENDING")
+                .build();
+
+        return ResponseEntity.ok(response);
     }
 
     /**

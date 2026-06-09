@@ -6,10 +6,18 @@ import java.time.LocalDate;
 import org.hibernate.annotations.SQLDelete;
 import org.hibernate.annotations.SQLRestriction;
 
+import lombok.Getter;
+import lombok.Setter;
+
 @Entity
-@Table(name = "movies", schema = "catalog")
+@Table(name = "movies", schema = "catalog", indexes = {
+    @Index(name = "idx_movie_status", columnList = "status"),
+    @Index(name = "idx_movie_genre", columnList = "genre")
+})
 @SQLDelete(sql = "UPDATE catalog.movies SET is_deleted = true WHERE id=?")
 @SQLRestriction("is_deleted = false")
+@Getter
+@Setter
 public class MovieJpaEntity {
     @jakarta.persistence.Column(name = "is_deleted")
     private boolean isDeleted = false;
@@ -107,67 +115,4 @@ public class MovieJpaEntity {
         }
     }
 
-    public String getId() {
-        return id;
-    }
-
-    public void setId(String id) {
-        this.id = id;
-    }
-
-    public String getTitle() {
-        return title;
-    }
-
-    public void setTitle(String title) {
-        this.title = title;
-    }
-
-    public String getDescription() {
-        return description;
-    }
-
-    public void setDescription(String description) {
-        this.description = description;
-    }
-
-    public Integer getDurationMinutes() {
-        return durationMinutes;
-    }
-
-    public void setDurationMinutes(Integer durationMinutes) {
-        this.durationMinutes = durationMinutes;
-    }
-
-    public LocalDate getReleaseDate() {
-        return releaseDate;
-    }
-
-    public void setReleaseDate(LocalDate releaseDate) {
-        this.releaseDate = releaseDate;
-    }
-
-    public String getPosterUrl() {
-        return posterUrl;
-    }
-
-    public void setPosterUrl(String posterUrl) {
-        this.posterUrl = posterUrl;
-    }
-
-    public String getGenre() {
-        return genre;
-    }
-
-    public void setGenre(String genre) {
-        this.genre = genre;
-    }
-
-    public String getStatus() {
-        return status;
-    }
-
-    public void setStatus(String status) {
-        this.status = status;
-    }
 }

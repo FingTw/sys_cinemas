@@ -52,6 +52,11 @@ public class SeatRepositoryAdapter implements SeatRepository {
     }
 
     @Override
+    public int countByRoomId(String roomId) {
+        return springDataSeatRepository.countByRoomId(roomId);
+    }
+
+    @Override
     public void deleteByRoomId(String roomId) {
         springDataSeatRepository.deleteByRoomId(roomId);
     }

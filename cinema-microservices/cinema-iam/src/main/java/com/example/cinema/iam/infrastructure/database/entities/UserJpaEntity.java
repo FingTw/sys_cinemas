@@ -18,17 +18,21 @@ import java.util.HashSet;
 import org.hibernate.annotations.SQLDelete;
 import org.hibernate.annotations.SQLRestriction;
 
+import lombok.Getter;
+import lombok.Setter;
+
 @Entity
 @Table(name = "users", schema = "auth")
 @SQLDelete(sql = "UPDATE auth.users SET is_deleted = true WHERE id=?")
 @SQLRestriction("is_deleted = false")
+@Getter
+@Setter
 public class UserJpaEntity {
     @jakarta.persistence.Column(name = "is_deleted")
     private boolean isDeleted = false;
 
 
     @Id
-    @GeneratedValue(strategy = GenerationType.UUID)
     private String id;
 
     @Column(unique = true, nullable = false)
@@ -40,11 +44,11 @@ public class UserJpaEntity {
     @Column(unique = true, nullable = false)
     private String email;
 
-    @ManyToMany(fetch = FetchType.EAGER)
+    @ManyToMany(fetch = FetchType.LAZY)
     @JoinTable(name = "user_roles", schema = "auth", joinColumns = @JoinColumn(name = "user_id"), inverseJoinColumns = @JoinColumn(name = "role_id"))
     private Set<RoleJpaEntity> roles = new HashSet<>();
 
-    @ManyToMany(fetch = FetchType.EAGER)
+    @ManyToMany(fetch = FetchType.LAZY)
     @JoinTable(
         name = "user_permissions",
         schema = "auth",
@@ -144,75 +148,4 @@ public class UserJpaEntity {
         }
     }
 
-    public String getId() {
-        return id;
-    }
-
-    public void setId(String id) {
-        this.id = id;
-    }
-
-    public String getUsername() {
-        return username;
-    }
-
-    public void setUsername(String username) {
-        this.username = username;
-    }
-
-    public String getPassword() {
-        return password;
-    }
-
-    public void setPassword(String password) {
-        this.password = password;
-    }
-
-    public String getEmail() {
-        return email;
-    }
-
-    public void setEmail(String email) {
-        this.email = email;
-    }
-
-    public Set<RoleJpaEntity> getRoles() {
-        return roles;
-    }
-
-    public void setRoles(Set<RoleJpaEntity> roles) {
-        this.roles = roles;
-    }
-
-    public Set<PermissionJpaEntity> getPermissions() {
-        return permissions;
-    }
-
-    public void setPermissions(Set<PermissionJpaEntity> permissions) {
-        this.permissions = permissions;
-    }
-
-    public String getActiveToken() {
-        return activeToken;
-    }
-
-    public void setActiveToken(String activeToken) {
-        this.activeToken = activeToken;
-    }
-
-    public boolean isBlocked() {
-        return isBlocked;
-    }
-
-    public void setBlocked(boolean blocked) {
-        isBlocked = blocked;
-    }
-
-    public Long getTokenVersion() {
-        return tokenVersion;
-    }
-
-    public void setTokenVersion(Long tokenVersion) {
-        this.tokenVersion = tokenVersion;
-    }
 }

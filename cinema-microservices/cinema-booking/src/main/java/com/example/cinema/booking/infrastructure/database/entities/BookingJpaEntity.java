@@ -2,18 +2,23 @@ package com.example.cinema.booking.infrastructure.database.entities;
 
 import jakarta.persistence.*;
 import org.hibernate.annotations.CreationTimestamp;
-
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
-
 import org.hibernate.annotations.SQLDelete;
 import org.hibernate.annotations.SQLRestriction;
+import lombok.Getter;
+import lombok.Setter;
 
 @Entity
-@Table(name = "bookings", schema = "booking")
+@Table(name = "bookings", schema = "booking", indexes = {
+    @Index(name = "idx_booking_user", columnList = "userId"),
+    @Index(name = "idx_booking_showtime", columnList = "showtimeId")
+})
 @SQLDelete(sql = "UPDATE booking.bookings SET is_deleted = true WHERE id=?")
 @SQLRestriction("is_deleted = false")
+@Getter
+@Setter
 public class BookingJpaEntity {
     @jakarta.persistence.Column(name = "is_deleted")
     private boolean isDeleted = false;
@@ -125,77 +130,5 @@ public class BookingJpaEntity {
         public BookingJpaEntity build() {
             return new BookingJpaEntity(id, userId, showtimeId, totalPrice, status, expiresAt, paymentTransactionId, createdAt, seats);
         }
-    }
-
-    public String getId() {
-        return id;
-    }
-
-    public void setId(String id) {
-        this.id = id;
-    }
-
-    public String getUserId() {
-        return userId;
-    }
-
-    public void setUserId(String userId) {
-        this.userId = userId;
-    }
-
-    public String getShowtimeId() {
-        return showtimeId;
-    }
-
-    public void setShowtimeId(String showtimeId) {
-        this.showtimeId = showtimeId;
-    }
-
-    public BigDecimal getTotalPrice() {
-        return totalPrice;
-    }
-
-    public void setTotalPrice(BigDecimal totalPrice) {
-        this.totalPrice = totalPrice;
-    }
-
-    public String getStatus() {
-        return status;
-    }
-
-    public void setStatus(String status) {
-        this.status = status;
-    }
-
-    public LocalDateTime getExpiresAt() {
-        return expiresAt;
-    }
-
-    public void setExpiresAt(LocalDateTime expiresAt) {
-        this.expiresAt = expiresAt;
-    }
-
-    public String getPaymentTransactionId() {
-        return paymentTransactionId;
-    }
-
-    public void setPaymentTransactionId(String paymentTransactionId) {
-        this.paymentTransactionId = paymentTransactionId;
-    }
-
-    public LocalDateTime getCreatedAt() {
-        return createdAt;
-    }
-
-    public void setCreatedAt(LocalDateTime createdAt) {
-        this.createdAt = createdAt;
-    }
-
-    public List<BookingSeatJpaEntity> getSeats() {
-        return seats;
-    }
-
-    public void setSeats(List<BookingSeatJpaEntity> seats) {
-        this.seats = seats;
     }
 }

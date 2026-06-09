@@ -7,7 +7,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 
 import java.util.Optional;
 
-@FeignClient(name = "facility-service", url = "${app.services.facility.url:http://localhost:8083/api/v1/rooms}")
+@FeignClient(name = "facility-service", url = "${app.services.facility.url}")
 public interface FacilityClient {
     @GetMapping("/{id}")
     Optional<RoomDTO> getRoomById(@PathVariable("id") String id);

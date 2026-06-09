@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Cinema Booking Service Log4j2 Config - SERVICE_NAME duoc set qua system property -->
+<Configuration status="WARN" monitorInterval="30">
+
+    <Properties>
+        <Property name="SERVICE_NAME">CINEMA-BOOKING</Property>
+        <!-- Pattern Console: Đậm chất Keycloak/JBoss (Dễ nhìn + Giấu PII) -->
+        <Property name="CONSOLE_PATTERN">%style{%d{HH:mm:ss}}{white} %highlight{%-5level}{FATAL=red blink, ERROR=red, WARN=yellow, INFO=bright_blue, DEBUG=green, TRACE=blue} %style{[%X{requestId}]}{bright_yellow} %style{[%style{CINEMA-BOOKING}{bright_white}]}{bright_blue} %style{%logger{1.}}{bright_green} : %replace{%msg}{(?i)(password|token|secret|tokenHash|tokenJti|refreshToken)([:= ]+)[^&amp;,\n]+}{$1$2******}%n%throwable</Property>
+        <Property name="FILE_PATTERN">%d{yyyy-MM-dd HH:mm:ss.SSS} %-5level [CINEMA-BOOKING] [%X{requestId}]%notEmpty{ [%X{responseTime}]}%notEmpty{ [traceId=%X{traceId}, spanId=%X{spanId}]} %logger{50} : %replace{%msg}{(?i)(password|token|secret|tokenHash|tokenJti|refreshToken)([:= ]+)[^&amp;,\n]+}{$1$2******}%n</Property>
+    </Properties>
+
+    <Appenders>
+        <Console name="Console" target="SYSTEM_OUT">
+            <PatternLayout pattern="${CONSOLE_PATTERN}" charset="UTF-8" disableAnsi="false"/>
+        </Console>
+        <RollingFile name="File"
+                     fileName="logs/cinema-booking.log"
+                     filePattern="logs/cinema-booking.%d{yyyy-MM-dd}-%i.log.gz">
+            <PatternLayout pattern="${FILE_PATTERN}" charset="UTF-8"/>
+            <Policies>
+                <TimeBasedTriggeringPolicy interval="1" modulate="true"/>
+                <SizeBasedTriggeringPolicy size="50MB"/>
+            </Policies>
+            <DefaultRolloverStrategy max="30">
+                <Delete basePath="logs" maxDepth="1">
+                    <IfFileName glob="cinema-booking.*.log.gz"/>
+                    <IfLastModified age="30d"/>
+                </Delete>
+            </DefaultRolloverStrategy>
+        </RollingFile>
+    </Appenders>
+
+    <Loggers>
+        <Logger name="org.springframework" level="WARN" additivity="false">
+            <AppenderRef ref="Console"/><AppenderRef ref="File"/>
+        </Logger>
+        <Logger name="org.hibernate" level="WARN" additivity="false">
+            <AppenderRef ref="Console"/><AppenderRef ref="File"/>
+        </Logger>
+        <Logger name="org.apache" level="WARN" additivity="false">
+            <AppenderRef ref="Console"/><AppenderRef ref="File"/>
+        </Logger>
+        <Logger name="io.lettuce" level="WARN" additivity="false">
+            <AppenderRef ref="Console"/><AppenderRef ref="File"/>
+        </Logger>
+        <Logger name="io.netty" level="WARN" additivity="false">
+            <AppenderRef ref="Console"/><AppenderRef ref="File"/>
+        </Logger>
+        <Logger name="org.flywaydb" level="INFO" additivity="false">
+            <AppenderRef ref="Console"/><AppenderRef ref="File"/>
+        </Logger>
+        <Logger name="com.example.cinema.common.logging" level="INFO" additivity="false">
+            <AppenderRef ref="Console"/><AppenderRef ref="File"/>
+        </Logger>
+        <Logger name="com.example.cinema" level="INFO" additivity="false">
+            <AppenderRef ref="Console"/><AppenderRef ref="File"/>
+        </Logger>
+        <Root level="INFO">
+            <AppenderRef ref="Console"/>
+            <AppenderRef ref="File"/>
+        </Root>
+    </Loggers>
+</Configuration>

@@ -16,6 +16,6 @@ public interface BookingQueryUseCase {
     // User: Hủy booking PENDING
     void cancelBooking(String bookingId, String userId);
 
-    // Admin: Xem tất cả booking
-    List<BookingDetailResponse> getAllBookings();
+    // Internal/Admin: Xem chi tiết booking không cần kiểm tra quyền sở hữu
+    BookingDetailResponse getBookingDetailInternal(String bookingId);
 }

@@ -1,0 +1,203 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<jasperReport xmlns="http://jasperreports.sourceforge.net/jasperreports"
+              xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+              xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports http://jasperreports.sourceforge.net/xsd/jasperreport.xsd"
+              name="pos_receipt"
+              pageWidth="226"
+              pageHeight="800"
+              columnWidth="206"
+              leftMargin="10"
+              rightMargin="10"
+              topMargin="10"
+              bottomMargin="10"
+              isIgnorePagination="true"
+              uuid="12345678-1234-4752-beba-447be0a75f20">
+
+    <!-- Parameters — data fetched via API, not SQL -->
+    <parameter name="BookingId"       class="java.lang.String"/>
+    <parameter name="BarcodeImage"    class="java.awt.Image"/>
+    <parameter name="customerName"    class="java.lang.String"/>
+    <parameter name="movieTitle"      class="java.lang.String"/>
+    <parameter name="roomName"        class="java.lang.String"/>
+    <parameter name="startTime"       class="java.sql.Timestamp"/>
+    <parameter name="totalPrice"      class="java.math.BigDecimal"/>
+    <parameter name="seatLabels"      class="java.lang.String"/>
+    <parameter name="ticketCount"     class="java.lang.Long"/>
+    <parameter name="cinemaName"      class="java.lang.String"/>
+    <parameter name="cinemaAddress"   class="java.lang.String"/>
+    <parameter name="transactionTime" class="java.sql.Timestamp"/>
+
+    <title>
+        <band height="60" splitType="Stretch">
+            <textField>
+                <reportElement x="0" y="0" width="206" height="20" uuid="t1"/>
+                <textElement textAlignment="Center" verticalAlignment="Middle">
+                    <font fontName="Be Vietnam Pro" size="14" isBold="true" pdfEncoding="Identity-H" isPdfEmbedded="true"/>
+                </textElement>
+                <textFieldExpression><![CDATA[$P{cinemaName}]]></textFieldExpression>
+            </textField>
+            <textField>
+                <reportElement x="0" y="20" width="206" height="15" uuid="t2"/>
+                <textElement textAlignment="Center" verticalAlignment="Middle">
+                    <font fontName="Be Vietnam Pro" size="9" pdfEncoding="Identity-H" isPdfEmbedded="true"/>
+                </textElement>
+                <textFieldExpression><![CDATA[$P{cinemaAddress}]]></textFieldExpression>
+            </textField>
+            <staticText>
+                <reportElement x="0" y="40" width="206" height="20" uuid="t3"/>
+                <textElement textAlignment="Center" verticalAlignment="Middle">
+                    <font fontName="Be Vietnam Pro" size="12" isBold="true" pdfEncoding="Identity-H" isPdfEmbedded="true"/>
+                </textElement>
+                <text><![CDATA[HOA DON THANH TOAN]]></text>
+            </staticText>
+        </band>
+    </title>
+
+    <detail>
+        <band height="180" splitType="Stretch">
+            <line>
+                <reportElement x="0" y="5" width="206" height="1" uuid="l1"/>
+                <graphicElement>
+                    <pen lineStyle="Dashed"/>
+                </graphicElement>
+            </line>
+            
+            <staticText>
+                <reportElement x="0" y="15" width="60" height="15" uuid="d1"/>
+                <textElement>
+                    <font fontName="Be Vietnam Pro" size="9" isBold="true" pdfEncoding="Identity-H" isPdfEmbedded="true"/>
+                </textElement>
+                <text><![CDATA[Phim:]]></text>
+            </staticText>
+            <textField>
+                <reportElement x="60" y="15" width="146" height="15" uuid="d2"/>
+                <textElement>
+                    <font fontName="Be Vietnam Pro" size="9" isBold="true" pdfEncoding="Identity-H" isPdfEmbedded="true"/>
+                </textElement>
+                <textFieldExpression><![CDATA[$P{movieTitle}]]></textFieldExpression>
+            </textField>
+
+            <staticText>
+                <reportElement x="0" y="30" width="60" height="15" uuid="d3"/>
+                <textElement>
+                    <font fontName="Be Vietnam Pro" size="9" pdfEncoding="Identity-H" isPdfEmbedded="true"/>
+                </textElement>
+                <text><![CDATA[Suat chieu:]]></text>
+            </staticText>
+            <textField pattern="dd/MM/yyyy HH:mm">
+                <reportElement x="60" y="30" width="146" height="15" uuid="d4"/>
+                <textElement>
+                    <font fontName="Be Vietnam Pro" size="9" pdfEncoding="Identity-H" isPdfEmbedded="true"/>
+                </textElement>
+                <textFieldExpression><![CDATA[$P{startTime}]]></textFieldExpression>
+            </textField>
+
+            <staticText>
+                <reportElement x="0" y="45" width="60" height="15" uuid="d5"/>
+                <textElement>
+                    <font fontName="Be Vietnam Pro" size="9" pdfEncoding="Identity-H" isPdfEmbedded="true"/>
+                </textElement>
+                <text><![CDATA[Phong:]]></text>
+            </staticText>
+            <textField>
+                <reportElement x="60" y="45" width="146" height="15" uuid="d6"/>
+                <textElement>
+                    <font fontName="Be Vietnam Pro" size="9" pdfEncoding="Identity-H" isPdfEmbedded="true"/>
+                </textElement>
+                <textFieldExpression><![CDATA[$P{roomName}]]></textFieldExpression>
+            </textField>
+
+            <staticText>
+                <reportElement x="0" y="60" width="60" height="15" uuid="d7"/>
+                <textElement>
+                    <font fontName="Be Vietnam Pro" size="9" pdfEncoding="Identity-H" isPdfEmbedded="true"/>
+                </textElement>
+                <text><![CDATA[Ghe:]]></text>
+            </staticText>
+            <textField isStretchWithOverflow="true">
+                <reportElement x="60" y="60" width="146" height="15" uuid="d8"/>
+                <textElement>
+                    <font fontName="Be Vietnam Pro" size="9" isBold="true" pdfEncoding="Identity-H" isPdfEmbedded="true"/>
+                </textElement>
+                <textFieldExpression><![CDATA[$P{seatLabels} + " (" + $P{ticketCount} + " ve)"]]></textFieldExpression>
+            </textField>
+
+            <line>
+                <reportElement x="0" y="80" width="206" height="1" uuid="l2"/>
+                <graphicElement>
+                    <pen lineStyle="Dashed"/>
+                </graphicElement>
+            </line>
+
+            <staticText>
+                <reportElement x="0" y="90" width="100" height="20" uuid="d9"/>
+                <textElement verticalAlignment="Middle">
+                    <font fontName="Be Vietnam Pro" size="12" isBold="true" pdfEncoding="Identity-H" isPdfEmbedded="true"/>
+                </textElement>
+                <text><![CDATA[TONG TIEN:]]></text>
+            </staticText>
+            <textField pattern="#,##0 VND">
+                <reportElement x="100" y="90" width="106" height="20" uuid="d10"/>
+                <textElement textAlignment="Right" verticalAlignment="Middle">
+                    <font fontName="Be Vietnam Pro" size="12" isBold="true" pdfEncoding="Identity-H" isPdfEmbedded="true"/>
+                </textElement>
+                <textFieldExpression><![CDATA[$P{totalPrice}]]></textFieldExpression>
+            </textField>
+
+            <line>
+                <reportElement x="0" y="115" width="206" height="1" uuid="l3"/>
+                <graphicElement>
+                    <pen lineStyle="Dashed"/>
+                </graphicElement>
+            </line>
+
+            <staticText>
+                <reportElement x="0" y="125" width="60" height="12" uuid="d11"/>
+                <textElement>
+                    <font fontName="Be Vietnam Pro" size="8" pdfEncoding="Identity-H" isPdfEmbedded="true"/>
+                </textElement>
+                <text><![CDATA[Ma GD:]]></text>
+            </staticText>
+            <textField>
+                <reportElement x="60" y="125" width="146" height="12" uuid="d12"/>
+                <textElement>
+                    <font fontName="Be Vietnam Pro" size="8" pdfEncoding="Identity-H" isPdfEmbedded="true"/>
+                </textElement>
+                <textFieldExpression><![CDATA[$P{BookingId}]]></textFieldExpression>
+            </textField>
+
+            <staticText>
+                <reportElement x="0" y="137" width="60" height="12" uuid="d13"/>
+                <textElement>
+                    <font fontName="Be Vietnam Pro" size="8" pdfEncoding="Identity-H" isPdfEmbedded="true"/>
+                </textElement>
+                <text><![CDATA[Thoi gian:]]></text>
+            </staticText>
+            <textField pattern="dd/MM/yyyy HH:mm:ss">
+                <reportElement x="60" y="137" width="146" height="12" uuid="d14"/>
+                <textElement>
+                    <font fontName="Be Vietnam Pro" size="8" pdfEncoding="Identity-H" isPdfEmbedded="true"/>
+                </textElement>
+                <textFieldExpression><![CDATA[$P{transactionTime}]]></textFieldExpression>
+            </textField>
+            
+            <image scaleImage="RetainShape" hAlign="Center">
+                <reportElement x="0" y="155" width="206" height="25" uuid="img1"/>
+                <imageExpression><![CDATA[$P{BarcodeImage}]]></imageExpression>
+            </image>
+        </band>
+    </detail>
+
+    <summary>
+        <band height="30">
+            <staticText>
+                <reportElement x="0" y="10" width="206" height="15" uuid="s1"/>
+                <textElement textAlignment="Center">
+                    <font fontName="Be Vietnam Pro" size="9" isItalic="true" pdfEncoding="Identity-H" isPdfEmbedded="true"/>
+                </textElement>
+                <text><![CDATA[Xin cam on va chuc ban xem phim vui ve!]]></text>
+            </staticText>
+        </band>
+    </summary>
+
+</jasperReport>

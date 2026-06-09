@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<fontFamilies>
+    <fontFamily name="Be Vietnam Pro">
+        <normal>fonts/Be_Vietnam_Pro/BeVietnamPro-Regular.ttf</normal>
+        <bold>fonts/Be_Vietnam_Pro/BeVietnamPro-Bold.ttf</bold>
+        <italic>fonts/Be_Vietnam_Pro/BeVietnamPro-Regular.ttf</italic>
+        <boldItalic>fonts/Be_Vietnam_Pro/BeVietnamPro-Bold.ttf</boldItalic>
+        <pdfEncoding>Identity-H</pdfEncoding>
+        <pdfEmbedded>true</pdfEmbedded>
+    </fontFamily>
+</fontFamilies>

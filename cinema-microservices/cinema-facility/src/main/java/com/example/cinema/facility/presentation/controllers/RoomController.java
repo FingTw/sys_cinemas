@@ -1,8 +1,8 @@
 package com.example.cinema.facility.presentation.controllers;
 
+import com.example.cinema.facility.application.ports.in.FacilityService;
 import com.example.cinema.facility.application.dto.RoomDTO;
 import com.example.cinema.facility.application.dto.SeatDTO;
-import com.example.cinema.facility.application.usecases.FacilityUseCase;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -15,29 +15,29 @@ import java.util.List;
 @RequestMapping("/api/v1/rooms")
 public class RoomController {
 
-    private final FacilityUseCase facilityUseCase;
+    private final FacilityService facilityService;
 
-    public RoomController(FacilityUseCase facilityUseCase) {
-        this.facilityUseCase = facilityUseCase;
+    public RoomController(FacilityService facilityService) {
+        this.facilityService = facilityService;
     }
 
     @GetMapping
     public ResponseEntity<List<RoomDTO>> getAllRooms() {
-        return ResponseEntity.ok(facilityUseCase.getAllRooms());
+        return ResponseEntity.ok(facilityService.getAllRooms());
     }
 
     @GetMapping("/{id}")
     public ResponseEntity<RoomDTO> getRoomById(@PathVariable String id) {
-        return ResponseEntity.ok(facilityUseCase.getRoomById(id));
+        return ResponseEntity.ok(facilityService.getRoomById(id));
     }
 
     @GetMapping("/{roomId}/seats")
     public ResponseEntity<List<SeatDTO>> getSeatsByRoom(@PathVariable String roomId) {
-        return ResponseEntity.ok(facilityUseCase.getSeatsByRoom(roomId));
+        return ResponseEntity.ok(facilityService.getSeatsByRoom(roomId));
     }
 
     @GetMapping("/seats/{id}")
     public ResponseEntity<SeatDTO> getSeatById(@PathVariable String id) {
-        return ResponseEntity.ok(facilityUseCase.getSeatById(id));
+        return ResponseEntity.ok(facilityService.getSeatById(id));
     }
 }

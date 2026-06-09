@@ -1,0 +1,11 @@
+package com.example.cinema.admin.application.ports.in;
+
+import com.example.cinema.admin.application.dto.MovieDTO;
+import java.util.List;
+
+public interface AdminMovieUseCase {
+    MovieDTO createMovie(MovieDTO dto);
+    List<MovieDTO> getAllMovies();
+    MovieDTO updateMovie(String id, MovieDTO dto);
+    void deleteMovie(String id);
+}

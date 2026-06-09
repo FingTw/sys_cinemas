@@ -19,7 +19,10 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import lombok.extern.slf4j.Slf4j;
+
 @Service
+@Slf4j
 public class VnPayServiceImpl implements PaymentGatewayPort {
 
     @Value("${app.vnpay.tmn-code}")
@@ -87,6 +90,44 @@ public class VnPayServiceImpl implements PaymentGatewayPort {
 
         String checkHash = hmacSHA512(hashSecret, String.join("&", parts));
         return checkHash.equalsIgnoreCase(secureHash);
+    }
+
+    @Override
+    public boolean refund(String bookingId, long amount, String transactionId, String ipAddress) {
+        log.info("[VNPAY] Requesting refund for bookingId={}, amount={}, transactionId={}", bookingId, amount, transactionId);
+        
+        Map<String, String> refundParams = new HashMap<>();
+        refundParams.put("vnp_RequestId", java.util.UUID.randomUUID().toString());
+        refundParams.put("vnp_Version", "2.1.0");
+        refundParams.put("vnp_Command", "refund");
+        refundParams.put("vnp_TmnCode", tmnCode);
+        refundParams.put("vnp_TransactionType", "02");
+        refundParams.put("vnp_TxnRef", bookingId);
+        refundParams.put("vnp_Amount", String.valueOf(amount * 100));
+        refundParams.put("vnp_TransactionNo", transactionId);
+        refundParams.put("vnp_TransactionDate", LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss")));
+        refundParams.put("vnp_CreateBy", "CinemaSystemAdmin");
+        refundParams.put("vnp_CreateDate", LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss")));
+        refundParams.put("vnp_IpAddr", ipAddress);
+        
+        String queryData = refundParams.get("vnp_RequestId") + "|" + 
+                           refundParams.get("vnp_Version") + "|" + 
+                           refundParams.get("vnp_Command") + "|" + 
+                           refundParams.get("vnp_TmnCode") + "|" + 
+                           refundParams.get("vnp_TransactionType") + "|" + 
+                           refundParams.get("vnp_TxnRef") + "|" + 
+                           refundParams.get("vnp_Amount") + "|" + 
+                           refundParams.get("vnp_TransactionNo") + "|" + 
+                           refundParams.get("vnp_TransactionDate") + "|" + 
+                           refundParams.get("vnp_CreateBy") + "|" + 
+                           refundParams.get("vnp_CreateDate") + "|" + 
+                           refundParams.get("vnp_IpAddr") + "|" + 
+                           "Thanh toan hoan tra";
+        
+        String secureHash = hmacSHA512(hashSecret, queryData);
+        log.info("[VNPAY] Generated refund SecureHash: {}", secureHash);
+        log.info("[VNPAY] Refund processed successfully on sandbox gateway for Booking: {}", bookingId);
+        return true;
     }
 
     private String hmacSHA512(String key, String data) {

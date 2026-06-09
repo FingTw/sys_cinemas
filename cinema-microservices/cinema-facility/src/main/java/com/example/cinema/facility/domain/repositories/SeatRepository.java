@@ -9,6 +9,7 @@ public interface SeatRepository {
     Seat save(Seat seat);
     Optional<Seat> findById(String id);
     List<Seat> findByRoomId(String roomId);
+    int countByRoomId(String roomId);
     void deleteByRoomId(String roomId);
     List<Seat> findAll();
 }

@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Cinema Notification Service Log4j2 Config -->
+<Configuration status="WARN" monitorInterval="30">
+
+    <Properties>
+        <Property name="SERVICE_NAME">CINEMA-NOTIFICATION</Property>
+        <Property name="CONSOLE_PATTERN">%d{HH:mm:ss.SSS} %highlight{%-5level}{FATAL=red blink, ERROR=red, WARN=yellow, INFO=cyan, DEBUG=green, TRACE=blue} [%style{CINEMA-NOTIFICATION}{cyan}] [%style{%X{requestId}}{yellow}]%notEmpty{ [%style{%X{responseTime}}{magenta}]} %logger{36} : %replace{%msg}{(?i)(password|token|secret|tokenHash|tokenJti|refreshToken|vnp_SecureHash)([:= ]+)[^&amp;,\n]+}{$1$2******}%n</Property>
+        <Property name="FILE_PATTERN">%d{yyyy-MM-dd HH:mm:ss.SSS} %-5level [CINEMA-NOTIFICATION] [%X{requestId}]%notEmpty{ [%X{responseTime}]}%notEmpty{ [traceId=%X{traceId}, spanId=%X{spanId}]} %logger{50} : %replace{%msg}{(?i)(password|token|secret|tokenHash|tokenJti|refreshToken|vnp_SecureHash)([:= ]+)[^&amp;,\n]+}{$1$2******}%n</Property>
+    </Properties>
+
+    <Appenders>
+        <Console name="Console" target="SYSTEM_OUT">
+            <PatternLayout pattern="${CONSOLE_PATTERN}" charset="UTF-8"/>
+        </Console>
+        <RollingFile name="File"
+                     fileName="logs/cinema-notification.log"
+                     filePattern="logs/cinema-notification.%d{yyyy-MM-dd}-%i.log.gz">
+            <PatternLayout pattern="${FILE_PATTERN}" charset="UTF-8"/>
+            <Policies>
+                <TimeBasedTriggeringPolicy interval="1" modulate="true"/>
+                <SizeBasedTriggeringPolicy size="50MB"/>
+            </Policies>
+            <DefaultRolloverStrategy max="30">
+                <Delete basePath="logs" maxDepth="1">
+                    <IfFileName glob="cinema-notification.*.log.gz"/>
+                    <IfLastModified age="30d"/>
+                </Delete>
+            </DefaultRolloverStrategy>
+        </RollingFile>
+    </Appenders>
+
+    <Loggers>
+        <Logger name="org.springframework" level="WARN" additivity="false">
+            <AppenderRef ref="Console"/><AppenderRef ref="File"/>
+        </Logger>
+        <Logger name="org.apache" level="WARN" additivity="false">
+            <AppenderRef ref="Console"/><AppenderRef ref="File"/>
+        </Logger>
+        <Logger name="com.example.cinema" level="INFO" additivity="false">
+            <AppenderRef ref="Console"/><AppenderRef ref="File"/>
+        </Logger>
+        <Root level="INFO">
+            <AppenderRef ref="Console"/>
+            <AppenderRef ref="File"/>
+        </Root>
+    </Loggers>
+</Configuration>

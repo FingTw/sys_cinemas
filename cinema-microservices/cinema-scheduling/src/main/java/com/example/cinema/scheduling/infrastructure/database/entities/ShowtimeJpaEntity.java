@@ -3,14 +3,21 @@ package com.example.cinema.scheduling.infrastructure.database.entities;
 import jakarta.persistence.*;
 import java.time.LocalDateTime;
 import java.math.BigDecimal;
-
 import org.hibernate.annotations.SQLDelete;
 import org.hibernate.annotations.SQLRestriction;
+import lombok.Getter;
+import lombok.Setter;
 
 @Entity
-@Table(name = "showtimes", schema = "scheduling")
+@Table(name = "showtimes", schema = "scheduling", indexes = {
+    @Index(name = "idx_showtime_movie", columnList = "movieId"),
+    @Index(name = "idx_showtime_room", columnList = "roomId"),
+    @Index(name = "idx_showtime_start", columnList = "startTime")
+})
 @SQLDelete(sql = "UPDATE scheduling.showtimes SET is_deleted = true WHERE id=?")
 @SQLRestriction("is_deleted = false")
+@Getter
+@Setter
 public class ShowtimeJpaEntity {
     @jakarta.persistence.Column(name = "is_deleted")
     private boolean isDeleted = false;
@@ -122,77 +129,5 @@ public class ShowtimeJpaEntity {
         public ShowtimeJpaEntity build() {
             return new ShowtimeJpaEntity(id, movieId, roomId, startTime, endTime, status, price, priceVip, priceCouple);
         }
-    }
-
-    public String getId() {
-        return id;
-    }
-
-    public void setId(String id) {
-        this.id = id;
-    }
-
-    public String getMovieId() {
-        return movieId;
-    }
-
-    public void setMovieId(String movieId) {
-        this.movieId = movieId;
-    }
-
-    public String getRoomId() {
-        return roomId;
-    }
-
-    public void setRoomId(String roomId) {
-        this.roomId = roomId;
-    }
-
-    public LocalDateTime getStartTime() {
-        return startTime;
-    }
-
-    public void setStartTime(LocalDateTime startTime) {
-        this.startTime = startTime;
-    }
-
-    public LocalDateTime getEndTime() {
-        return endTime;
-    }
-
-    public void setEndTime(LocalDateTime endTime) {
-        this.endTime = endTime;
-    }
-
-    public String getStatus() {
-        return status;
-    }
-
-    public void setStatus(String status) {
-        this.status = status;
-    }
-
-    public BigDecimal getPrice() {
-        return price;
-    }
-
-    public void setPrice(BigDecimal price) {
-        this.price = price;
-    }
-
-    public BigDecimal getPriceVip() {
-        return priceVip;
-    }
-
-    public void setPriceVip(BigDecimal priceVip) {
-        this.priceVip = priceVip;
-    }
-
-    public BigDecimal getPriceCouple() {
-        return priceCouple;
-    }
-
-    public void setPriceCouple(BigDecimal priceCouple) {
-        this.priceCouple = priceCouple;
     }
 }

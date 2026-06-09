@@ -2,28 +2,26 @@ package com.example.cinema.iam.infrastructure.database.entities;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
-
 import java.util.UUID;
 import java.time.ZonedDateTime;
-
 import org.hibernate.annotations.SQLDelete;
 import org.hibernate.annotations.SQLRestriction;
+import lombok.*;
 
 @Entity
 @Table(name = "auth_tokens", schema = "auth")
 @SQLDelete(sql = "UPDATE auth.auth_tokens SET is_deleted = true WHERE id=?")
 @SQLRestriction("is_deleted = false")
+@Getter
+@Setter
+@NoArgsConstructor
 public class AuthTokenJpaEntity {
     @jakarta.persistence.Column(name = "is_deleted")
     private boolean isDeleted = false;
 
-
     @Id
-    @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
     @Column(nullable = false)
@@ -53,9 +51,7 @@ public class AuthTokenJpaEntity {
     @Column
     private ZonedDateTime revokedAt;
 
-    public AuthTokenJpaEntity() {
-    }
-
+    @Builder
     public AuthTokenJpaEntity(UUID id, String userId, String tokenJti, String tokenHash, String ipAddress, String userAgent, boolean isActive, ZonedDateTime issuedAt, ZonedDateTime expiresAt, ZonedDateTime revokedAt) {
         this.id = id;
         this.userId = userId;
@@ -68,26 +64,4 @@ public class AuthTokenJpaEntity {
         this.expiresAt = expiresAt;
         this.revokedAt = revokedAt;
     }
-
-    // Getters and Setters
-    public UUID getId() { return id; }
-    public void setId(UUID id) { this.id = id; }
-    public String getUserId() { return userId; }
-    public void setUserId(String userId) { this.userId = userId; }
-    public String getTokenJti() { return tokenJti; }
-    public void setTokenJti(String tokenJti) { this.tokenJti = tokenJti; }
-    public String getTokenHash() { return tokenHash; }
-    public void setTokenHash(String tokenHash) { this.tokenHash = tokenHash; }
-    public String getIpAddress() { return ipAddress; }
-    public void setIpAddress(String ipAddress) { this.ipAddress = ipAddress; }
-    public String getUserAgent() { return userAgent; }
-    public void setUserAgent(String userAgent) { this.userAgent = userAgent; }
-    public boolean isActive() { return isActive; }
-    public void setActive(boolean active) { isActive = active; }
-    public ZonedDateTime getIssuedAt() { return issuedAt; }
-    public void setIssuedAt(ZonedDateTime issuedAt) { this.issuedAt = issuedAt; }
-    public ZonedDateTime getExpiresAt() { return expiresAt; }
-    public void setExpiresAt(ZonedDateTime expiresAt) { this.expiresAt = expiresAt; }
-    public ZonedDateTime getRevokedAt() { return revokedAt; }
-    public void setRevokedAt(ZonedDateTime revokedAt) { this.revokedAt = revokedAt; }
 }

@@ -1,14 +1,17 @@
 package com.example.cinema.facility.infrastructure.database.entities;
 
 import jakarta.persistence.*;
-
 import org.hibernate.annotations.SQLDelete;
 import org.hibernate.annotations.SQLRestriction;
+import lombok.Getter;
+import lombok.Setter;
 
 @Entity
 @Table(name = "rooms", schema = "facility")
 @SQLDelete(sql = "UPDATE facility.rooms SET is_deleted = true WHERE id=?")
 @SQLRestriction("is_deleted = false")
+@Getter
+@Setter
 public class RoomJpaEntity {
     @jakarta.persistence.Column(name = "is_deleted")
     private boolean isDeleted = false;
@@ -80,45 +83,5 @@ public class RoomJpaEntity {
         public RoomJpaEntity build() {
             return new RoomJpaEntity(id, name, status, gridRows, gridCols);
         }
-    }
-
-    public String getId() {
-        return id;
-    }
-
-    public void setId(String id) {
-        this.id = id;
-    }
-
-    public String getName() {
-        return name;
-    }
-
-    public void setName(String name) {
-        this.name = name;
-    }
-
-    public String getStatus() {
-        return status;
-    }
-
-    public void setStatus(String status) {
-        this.status = status;
-    }
-
-    public Integer getGridRows() {
-        return gridRows;
-    }
-
-    public void setGridRows(Integer gridRows) {
-        this.gridRows = gridRows;
-    }
-
-    public Integer getGridCols() {
-        return gridCols;
-    }
-
-    public void setGridCols(Integer gridCols) {
-        this.gridCols = gridCols;
     }
 }

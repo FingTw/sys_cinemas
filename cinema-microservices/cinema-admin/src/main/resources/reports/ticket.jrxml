@@ -1,0 +1,433 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<jasperReport xmlns="http://jasperreports.sourceforge.net/jasperreports"
+              xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+              xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports http://jasperreports.sourceforge.net/xsd/jasperreport.xsd"
+              name="movie_ticket"
+              pageWidth="400"
+              pageHeight="780"
+              columnWidth="360"
+              leftMargin="20"
+              rightMargin="20"
+              topMargin="0"
+              bottomMargin="0"
+              uuid="c0340b07-7d52-4752-beba-447be0a75f20">
+
+    <!-- Parameters — data fetched via API, not SQL -->
+    <parameter name="BookingId"       class="java.lang.String"/>
+    <parameter name="QrCodeImage"     class="java.awt.Image"/>
+    <parameter name="MovieImage"      class="java.awt.Image"/>
+    <parameter name="BarcodeImage"    class="java.awt.Image"/>
+    <parameter name="customerName"    class="java.lang.String"/>
+    <parameter name="movieTitle"      class="java.lang.String"/>
+    <parameter name="movieFormat"     class="java.lang.String"/>
+    <parameter name="movieImageUrl"   class="java.lang.String"/>
+    <parameter name="roomName"        class="java.lang.String"/>
+    <parameter name="startTime"       class="java.sql.Timestamp"/>
+    <parameter name="endTime"         class="java.sql.Timestamp"/>
+    <parameter name="totalPrice"      class="java.math.BigDecimal"/>
+    <parameter name="seatLabels"      class="java.lang.String"/>
+    <parameter name="ticketCount"     class="java.lang.Long"/>
+    <parameter name="cinemaName"      class="java.lang.String"/>
+    <parameter name="cinemaAddress"   class="java.lang.String"/>
+    <parameter name="transactionId"   class="java.lang.String"/>
+    <parameter name="transactionTime" class="java.sql.Timestamp"/>
+
+    <background>
+        <band splitType="Stretch"/>
+    </background>
+
+    <title>
+        <band height="780" splitType="Stretch">
+
+            <!-- ══════════════════════════════════════════════════
+                 PHẦN 1 – TOP CARD (trắng, bo góc trên)
+                 bg trắng toàn bộ card
+                 ══════════════════════════════════════════════════ -->
+            <rectangle>
+                <reportElement mode="Opaque" x="0" y="0" width="400" height="780"
+                               backcolor="#FFF1F1" uuid="1a14ed16-dfee-45a3-ab39-269f2613dbc0"/>
+                <graphicElement><pen lineWidth="0.0"/></graphicElement>
+            </rectangle>
+
+            <!-- Card trên: nền trắng -->
+            <rectangle>
+                <reportElement mode="Opaque" x="10" y="10" width="380" height="430"
+                               backcolor="#FFFFFF" forecolor="#FFE4E4" uuid="7c116a9a-767e-4d89-af34-d27509960002"/>
+                <graphicElement>
+                    <pen lineWidth="0.5" lineStyle="Solid"/>
+                </graphicElement>
+            </rectangle>
+
+            <!-- ── Header: logo + tên rạp + tên phim + format ── -->
+            <!-- Logo placeholder box (thay bằng <image> nếu có logo) -->
+            <rectangle>
+                <reportElement mode="Opaque" x="20" y="20" width="36" height="36"
+                               backcolor="#DC2626" uuid="5d951ef0-6b39-45b1-9133-e19d62df3c08"/>
+                <graphicElement><pen lineWidth="0.0"/></graphicElement>
+            </rectangle>
+            <staticText>
+                <reportElement x="20" y="20" width="36" height="36"
+                               forecolor="#FFFFFF" uuid="eb416dd9-b1de-442a-8045-416ae20f66f5"/>
+                <textElement textAlignment="Center" verticalAlignment="Middle">
+                    <font fontName="DejaVu Sans" size="14" isBold="true"/>
+                </textElement>
+                <text><![CDATA[SC]]></text>
+            </staticText>
+
+            <!-- Tên rạp -->
+            <textField isBlankWhenNull="true">
+                <reportElement x="62" y="20" width="240" height="16"
+                               forecolor="#6B7280" uuid="f7ccf900-d290-4d9c-8163-aa88b8d9a1ef"/>
+                <textElement verticalAlignment="Middle">
+                    <font fontName="DejaVu Sans" size="9"/>
+                </textElement>
+                <textFieldExpression><![CDATA[$P{cinemaName}]]></textFieldExpression>
+            </textField>
+
+            <!-- Tên phim -->
+            <textField isBlankWhenNull="true" isStretchWithOverflow="true">
+                <reportElement x="62" y="36" width="240" height="22"
+                               forecolor="#111827" uuid="3d3e471a-e197-43e8-9140-7572e695938b"/>
+                <textElement verticalAlignment="Middle">
+                    <font fontName="DejaVu Sans" size="14" isBold="true"/>
+                </textElement>
+                <textFieldExpression><![CDATA[$P{movieTitle}]]></textFieldExpression>
+            </textField>
+
+            <!-- Format phim (2D Phụ đề...) -->
+            <textField isBlankWhenNull="true">
+                <reportElement x="62" y="58" width="200" height="14"
+                               forecolor="#9CA3AF" uuid="1d0d7c17-3985-41ca-a7e1-13fe4ea122aa"/>
+                <textElement verticalAlignment="Middle">
+                    <font fontName="DejaVu Sans" size="8"/>
+                </textElement>
+                <textFieldExpression><![CDATA[$P{movieFormat}]]></textFieldExpression>
+            </textField>
+
+            <!-- ── Ảnh phim (banner) ── -->
+            <image scaleImage="FillFrame" hAlign="Center" vAlign="Middle" onErrorType="Blank">
+                <reportElement x="10" y="80" width="380" height="185" uuid="8cd2310b-6804-437f-addc-3a94dcf860fc"/>
+                <imageExpression><![CDATA[$P{movieImageUrl}]]></imageExpression>
+            </image>
+
+            <!-- Overlay gradient tối dưới ảnh để chữ không bị mất -->
+            <rectangle>
+                <reportElement mode="Opaque" x="10" y="225" width="380" height="40"
+                               backcolor="#000000" uuid="b9e035bc-d22b-4882-b438-2b56c1ef2fc2"/>
+                <graphicElement><pen lineWidth="0.0"/></graphicElement>
+            </rectangle>
+
+            <!-- ── Mã đặt vé ── -->
+            <staticText>
+                <reportElement x="24" y="276" width="200" height="14"
+                               forecolor="#6B7280" uuid="75c4416e-350f-485b-bdc5-e6f56209fd39"/>
+                <textElement verticalAlignment="Middle">
+                    <font fontName="DejaVu Sans" size="9"/>
+                </textElement>
+                <text><![CDATA[Mã đặt vé:]]></text>
+            </staticText>
+
+            <textField isBlankWhenNull="true">
+                <reportElement x="24" y="290" width="200" height="26"
+                               forecolor="#111827" uuid="07ba54e1-b10d-4ee9-9974-69071d2e2ca1"/>
+                <textElement verticalAlignment="Middle">
+                    <font fontName="DejaVu Sans" size="18" isBold="true"/>
+                </textElement>
+                <textFieldExpression><![CDATA[$P{BookingId}]]></textFieldExpression>
+            </textField>
+
+            <!-- QR code (right side, spans 2 labels) -->
+            <image scaleImage="RealSize" hAlign="Center" vAlign="Middle">
+                <reportElement x="270" y="272" width="110" height="110" uuid="6e8b7f62-9419-47f4-bfd7-43e5bff0cc9b"/>
+                <imageExpression><![CDATA[$P{QrCodeImage}]]></imageExpression>
+            </image>
+
+            <!-- ── Thời gian ── -->
+            <staticText>
+                <reportElement x="24" y="322" width="200" height="14"
+                               forecolor="#6B7280" uuid="dc46c9b4-277a-4dc9-8f8e-b4d929cb9d66"/>
+                <textElement verticalAlignment="Middle">
+                    <font fontName="DejaVu Sans" size="9"/>
+                </textElement>
+                <text><![CDATA[Thời gian:]]></text>
+            </staticText>
+
+            <!-- Giờ chiếu (màu tím nổi bật) -->
+            <textField pattern="HH:mm" isBlankWhenNull="true">
+                <reportElement x="24" y="337" width="100" height="22"
+                               forecolor="#DC2626" uuid="b421a98a-6d21-4a93-af23-00627b6a0a32"/>
+                <textElement verticalAlignment="Middle">
+                    <font fontName="DejaVu Sans" size="16" isBold="true"/>
+                </textElement>
+                <textFieldExpression><![CDATA[$P{startTime}]]></textFieldExpression>
+            </textField>
+
+            <staticText>
+                <reportElement x="107" y="337" width="20" height="22"
+                               forecolor="#DC2626" uuid="55b7045f-fc39-42e2-b046-d4e1a376032a"/>
+                <textElement verticalAlignment="Middle">
+                    <font fontName="DejaVu Sans" size="16" isBold="true"/>
+                </textElement>
+                <text><![CDATA[ - ]]></text>
+            </staticText>
+
+            <textField pattern="HH:mm" isBlankWhenNull="true">
+                <reportElement x="125" y="337" width="100" height="22"
+                               forecolor="#DC2626" uuid="b34f1b1b-2131-45d9-9a38-b6d47b9bca15"/>
+                <textElement verticalAlignment="Middle">
+                    <font fontName="DejaVu Sans" size="16" isBold="true"/>
+                </textElement>
+                <textFieldExpression><![CDATA[$P{endTime}]]></textFieldExpression>
+            </textField>
+
+            <!-- Ngày chiếu (đen đậm) -->
+            <textField pattern="EEEE, dd/MM/yyyy" isBlankWhenNull="true">
+                <reportElement x="24" y="360" width="230" height="22"
+                               forecolor="#111827" uuid="20ce371e-c9d2-4a6d-a6ef-e401331e0b6f"/>
+                <textElement verticalAlignment="Middle">
+                    <font fontName="DejaVu Sans" size="14" isBold="true"/>
+                </textElement>
+                <textFieldExpression><![CDATA[$P{startTime}]]></textFieldExpression>
+            </textField>
+
+            <!-- Hướng dẫn -->
+            <staticText>
+                <reportElement x="24" y="390" width="340" height="14"
+                               forecolor="#9CA3AF" uuid="b447e82b-3853-4dbf-90f3-2c79866cfb0e"/>
+                <textElement verticalAlignment="Middle">
+                    <font fontName="DejaVu Sans" size="8" isItalic="true"/>
+                </textElement>
+                <text><![CDATA[Đưa mã này cho nhân viên soát vé để nhận vé vào rạp]]></text>
+            </staticText>
+
+            <!-- Dấu chấm tròn bên trái đường cắt (giả tear strip) -->
+            <ellipse>
+                <reportElement x="-8" y="420" width="16" height="16"
+                               backcolor="#FFF1F1" forecolor="#FFF1F1" uuid="9d11df20-4495-4005-98c9-da0591e9de71"/>
+                <graphicElement><pen lineWidth="0.0"/></graphicElement>
+            </ellipse>
+
+            <!-- Đường cắt nét đứt -->
+            <line>
+                <reportElement x="12" y="428" width="356" height="1"
+                               forecolor="#D1D5DB" uuid="0ab6bf03-f99f-41ea-b559-be94914bca34"/>
+                <graphicElement>
+                    <pen lineWidth="1.5" lineStyle="Dashed"/>
+                </graphicElement>
+            </line>
+
+            <!-- Dấu chấm tròn bên phải -->
+            <ellipse>
+                <reportElement x="392" y="420" width="16" height="16"
+                               backcolor="#FFF1F1" forecolor="#FFF1F1" uuid="53522b78-8f80-41a4-a851-c92c77d3efa4"/>
+                <graphicElement><pen lineWidth="0.0"/></graphicElement>
+            </ellipse>
+
+            <!-- ══════════════════════════════════════════════════
+                 PHẦN 2 – BOTTOM CARD (nền trắng)
+                 ══════════════════════════════════════════════════ -->
+            <rectangle>
+                <reportElement mode="Opaque" x="10" y="440" width="380" height="330"
+                               backcolor="#FFFFFF" forecolor="#FFE4E4" uuid="630ab578-6120-40ea-92db-982c8a50e7b7"/>
+                <graphicElement>
+                    <pen lineWidth="0.5" lineStyle="Solid"/>
+                </graphicElement>
+            </rectangle>
+
+            <!-- ── Lưới 3 cột: Phòng chiếu | Số vé | Số ghế ── -->
+            <!-- Labels -->
+            <staticText>
+                <reportElement x="24" y="454" width="100" height="14"
+                               forecolor="#9CA3AF" uuid="236f99e5-ee4b-462e-afe1-d893652a9b0e"/>
+                <textElement verticalAlignment="Middle">
+                    <font fontName="DejaVu Sans" size="9"/>
+                </textElement>
+                <text><![CDATA[Phòng chiếu]]></text>
+            </staticText>
+
+            <staticText>
+                <reportElement x="148" y="454" width="80" height="14"
+                               forecolor="#9CA3AF" uuid="2ce28d87-3d79-4742-b6f0-62e843846371"/>
+                <textElement verticalAlignment="Middle">
+                    <font fontName="DejaVu Sans" size="9"/>
+                </textElement>
+                <text><![CDATA[Số vé]]></text>
+            </staticText>
+
+            <staticText>
+                <reportElement x="248" y="454" width="130" height="14"
+                               forecolor="#9CA3AF" uuid="b4247698-c7ff-443a-8f51-8d69f00ff44b"/>
+                <textElement verticalAlignment="Middle">
+                    <font fontName="DejaVu Sans" size="9"/>
+                </textElement>
+                <text><![CDATA[Số ghế]]></text>
+            </staticText>
+
+            <!-- Values -->
+            <textField isBlankWhenNull="true">
+                <reportElement x="24" y="470" width="100" height="22"
+                               forecolor="#111827" uuid="ecad1c11-63d2-4db8-b8df-65f2b5a4d06f"/>
+                <textElement verticalAlignment="Middle">
+                    <font fontName="DejaVu Sans" size="15" isBold="true"/>
+                </textElement>
+                <textFieldExpression><![CDATA[$P{roomName}]]></textFieldExpression>
+            </textField>
+
+            <textField isBlankWhenNull="true">
+                <reportElement x="148" y="470" width="80" height="22"
+                               forecolor="#111827" uuid="b11b89ee-3e26-41b8-ab0a-7c979a1918d1"/>
+                <textElement verticalAlignment="Middle">
+                    <font fontName="DejaVu Sans" size="15" isBold="true"/>
+                </textElement>
+                <textFieldExpression><![CDATA[$P{ticketCount}]]></textFieldExpression>
+            </textField>
+
+            <textField isBlankWhenNull="true">
+                <reportElement x="248" y="470" width="130" height="22"
+                               forecolor="#111827" uuid="4819955b-a7c0-4050-938a-0dc95ab4fe68"/>
+                <textElement verticalAlignment="Middle">
+                    <font fontName="DejaVu Sans" size="15" isBold="true"/>
+                </textElement>
+                <textFieldExpression><![CDATA[$P{seatLabels}]]></textFieldExpression>
+            </textField>
+
+            <!-- Đường kẻ phân cách -->
+            <line>
+                <reportElement x="24" y="500" width="352" height="1"
+                               forecolor="#F3F4F6" uuid="10357266-abad-406a-8933-a1d99757111f"/>
+            </line>
+
+            <!-- ── Rạp chiếu ── -->
+            <staticText>
+                <reportElement x="24" y="510" width="200" height="14"
+                               forecolor="#9CA3AF" uuid="0f69b921-6e57-4a65-b543-eb5628759ba5"/>
+                <textElement verticalAlignment="Middle">
+                    <font fontName="DejaVu Sans" size="9"/>
+                </textElement>
+                <text><![CDATA[Rạp chiếu]]></text>
+            </staticText>
+
+            <textField isBlankWhenNull="true">
+                <reportElement x="24" y="525" width="352" height="18"
+                               forecolor="#111827" uuid="ecfb4323-dee1-4ce8-8fb3-ef3b227a4b7b"/>
+                <textElement verticalAlignment="Middle">
+                    <font fontName="DejaVu Sans" size="11" isBold="true"/>
+                </textElement>
+                <textFieldExpression><![CDATA[$P{cinemaName}]]></textFieldExpression>
+            </textField>
+
+            <textField isBlankWhenNull="true" isStretchWithOverflow="true">
+                <reportElement x="24" y="544" width="352" height="28"
+                               forecolor="#6B7280" uuid="8f1f6011-5be0-43cf-900b-f7d6c94d3da5"/>
+                <textElement verticalAlignment="Top">
+                    <font fontName="DejaVu Sans" size="9"/>
+                </textElement>
+                <textFieldExpression><![CDATA[$P{cinemaAddress}]]></textFieldExpression>
+            </textField>
+
+            <!-- Đường kẻ -->
+            <line>
+                <reportElement x="24" y="578" width="352" height="1"
+                               forecolor="#F3F4F6" uuid="fd621b93-7713-4cc8-ba48-ea3783705bd3"/>
+            </line>
+
+            <!-- ── Mã giao dịch & thời gian giao dịch ── -->
+            <staticText>
+                <reportElement x="24" y="588" width="180" height="14"
+                               forecolor="#9CA3AF" uuid="0f37f9a4-2e6c-4819-ac8f-f6e53bf56b43"/>
+                <textElement verticalAlignment="Middle">
+                    <font fontName="DejaVu Sans" size="9"/>
+                </textElement>
+                <text><![CDATA[Mã giao dịch]]></text>
+            </staticText>
+
+            <textField isBlankWhenNull="true">
+                <reportElement x="24" y="602" width="352" height="18"
+                               forecolor="#DC2626" uuid="4f2d71b2-f56a-4561-b754-1938dbf8360e"/>
+                <textElement verticalAlignment="Middle">
+                    <font fontName="DejaVu Sans" size="10" isBold="true"/>
+                </textElement>
+                <textFieldExpression><![CDATA[$P{transactionId}]]></textFieldExpression>
+            </textField>
+
+            <staticText>
+                <reportElement x="24" y="626" width="180" height="14"
+                               forecolor="#9CA3AF" uuid="020d8b20-3754-4bc1-b2d8-daa074894648"/>
+                <textElement verticalAlignment="Middle">
+                    <font fontName="DejaVu Sans" size="9"/>
+                </textElement>
+                <text><![CDATA[Thời gian giao dịch]]></text>
+            </staticText>
+
+            <textField pattern="HH:mm - dd/MM/yyyy" isBlankWhenNull="true">
+                <reportElement x="24" y="640" width="352" height="16"
+                               forecolor="#374151" uuid="782fbd36-6483-445d-9f04-a7c41e4693bd"/>
+                <textElement verticalAlignment="Middle">
+                    <font fontName="DejaVu Sans" size="10"/>
+                </textElement>
+                <textFieldExpression><![CDATA[$P{transactionTime}]]></textFieldExpression>
+            </textField>
+
+            <!-- Đường kẻ -->
+            <line>
+                <reportElement x="24" y="664" width="352" height="1"
+                               forecolor="#F3F4F6" uuid="3dad1f67-6e6e-434c-904b-79dc11c5687d"/>
+            </line>
+
+            <!-- ── Khách hàng + Giá ── -->
+            <staticText>
+                <reportElement x="24" y="672" width="180" height="14"
+                               forecolor="#9CA3AF" uuid="1c2a24f8-11f3-464d-9f04-2e3e6f042f6d"/>
+                <textElement verticalAlignment="Middle">
+                    <font fontName="DejaVu Sans" size="9"/>
+                </textElement>
+                <text><![CDATA[Khách hàng]]></text>
+            </staticText>
+
+            <staticText>
+                <reportElement x="240" y="672" width="136" height="14"
+                               forecolor="#9CA3AF" uuid="e86305a0-3886-4568-832c-2b5cdae86527"/>
+                <textElement textAlignment="Right" verticalAlignment="Middle">
+                    <font fontName="DejaVu Sans" size="9"/>
+                </textElement>
+                <text><![CDATA[Tổng tiền]]></text>
+            </staticText>
+
+            <textField isBlankWhenNull="true">
+                <reportElement x="24" y="686" width="180" height="18"
+                               forecolor="#111827" uuid="c84c1544-4540-485f-a6e3-a6e742ad7095"/>
+                <textElement verticalAlignment="Middle">
+                    <font fontName="DejaVu Sans" size="11" isBold="true"/>
+                </textElement>
+                <textFieldExpression><![CDATA[$P{customerName}]]></textFieldExpression>
+            </textField>
+
+            <textField pattern="#,##0đ" isBlankWhenNull="true">
+                <reportElement x="240" y="686" width="136" height="18"
+                               forecolor="#DC2626" uuid="a1a10904-8461-4fce-a0ea-d443564ec2e2"/>
+                <textElement textAlignment="Right" verticalAlignment="Middle">
+                    <font fontName="DejaVu Sans" size="13" isBold="true"/>
+                </textElement>
+                <textFieldExpression><![CDATA[$P{totalPrice}]]></textFieldExpression>
+            </textField>
+
+            <!-- ── Footer brand bar ── -->
+            <rectangle>
+                <reportElement mode="Opaque" x="10" y="740" width="380" height="30"
+                               backcolor="#DC2626" uuid="0b58b6fd-d1e9-439d-b8fa-743a3aef6b90"/>
+                <graphicElement><pen lineWidth="0.0"/></graphicElement>
+            </rectangle>
+
+            <staticText>
+                <reportElement x="10" y="740" width="380" height="30"
+                               forecolor="#FFFFFF" uuid="6171b9f7-c3c9-4f94-b699-284e0598fad0"/>
+                <textElement textAlignment="Center" verticalAlignment="Middle">
+                    <font fontName="DejaVu Sans" size="9" isBold="true"/>
+                </textElement>
+                <text><![CDATA[SYS CINEMA  ·  Chúc quý khách xem phim vui vẻ!]]></text>
+            </staticText>
+
+        </band>
+    </title>
+
+</jasperReport>

@@ -11,9 +11,14 @@ import com.example.cinema.iam.infrastructure.database.entities.UserJpaEntity;
 @Repository
 public interface SpringDataUserRepository extends JpaRepository<UserJpaEntity, String> {
 
+    @org.springframework.data.jpa.repository.EntityGraph(attributePaths = {"roles", "roles.permissions"})
     Optional<UserJpaEntity> findByUsername(String username);
 
+    @org.springframework.data.jpa.repository.EntityGraph(attributePaths = {"roles", "roles.permissions"})
+    Optional<UserJpaEntity> findById(String id);
+
     boolean existsByUsername(String username);
+    boolean existsByEmail(String email);
 
     @org.springframework.data.jpa.repository.Query("SELECT u.tokenVersion FROM UserJpaEntity u WHERE u.id = :id")
     Long findTokenVersionById(@org.springframework.data.repository.query.Param("id") String id);

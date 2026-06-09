@@ -1,5 +1,6 @@
 package com.example.cinema.common.filter;
 
+import com.example.cinema.common.util.CryptoUtil;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ReadListener;
@@ -74,7 +75,7 @@ public class AesDecryptionFilter extends OncePerRequestFilter {
 
             if (bodyMap.containsKey("payload") && bodyMap.size() == 1) {
                 String encryptedPayload = (String) bodyMap.get("payload");
-                String decryptedJson = decrypt(encryptedPayload);
+                String decryptedJson = CryptoUtil.decrypt(encryptedPayload, cryptoKey);
 
                 log.debug("AesDecryptionFilter: Đã giải mã payload cho {} {}",
                         request.getMethod(), request.getRequestURI());
@@ -92,18 +93,7 @@ public class AesDecryptionFilter extends OncePerRequestFilter {
         filterChain.doFilter(new BodyReplacedRequestWrapper(request, rawBody), response);
     }
 
-    private String decrypt(String encryptedBase64) throws Exception {
-        byte[] keyBytes = cryptoKey.getBytes(StandardCharsets.UTF_8);
-        SecretKeySpec keySpec = new SecretKeySpec(keyBytes, ALGORITHM);
 
-        Cipher cipher = Cipher.getInstance(TRANSFORMATION);
-        cipher.init(Cipher.DECRYPT_MODE, keySpec);
-
-        byte[] encryptedBytes = Base64.getDecoder().decode(encryptedBase64);
-        byte[] decryptedBytes = cipher.doFinal(encryptedBytes);
-
-        return new String(decryptedBytes, StandardCharsets.UTF_8);
-    }
 
     /**
      * Wrapper để thay thế body của HttpServletRequest,

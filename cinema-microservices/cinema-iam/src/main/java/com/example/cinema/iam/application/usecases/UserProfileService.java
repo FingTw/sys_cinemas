@@ -12,6 +12,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import org.modelmapper.ModelMapper;
 import java.util.stream.Collectors;
 
 @Service
@@ -20,9 +21,11 @@ public class UserProfileService implements UserProfileUseCase {
     private static final Logger log = LoggerFactory.getLogger(UserProfileService.class);
 
     private final UserRepository userRepository;
+    private final ModelMapper modelMapper;
 
-    public UserProfileService(UserRepository userRepository) {
+    public UserProfileService(UserRepository userRepository, ModelMapper modelMapper) {
         this.userRepository = userRepository;
+        this.modelMapper = modelMapper;
     }
 
     @Override
@@ -32,7 +35,7 @@ public class UserProfileService implements UserProfileUseCase {
         try {
             User user = userRepository.findById(userId)
                     .orElseThrow(() -> new ClientException("Khong tim thay nguoi dung."));
-            return mapToDTO(user);
+            return convertToDTO(user);
         } catch (ClientException e) {
             throw e;
         } catch (Exception e) {
@@ -58,11 +61,11 @@ public class UserProfileService implements UserProfileUseCase {
                 throw new ClientException("Email khong hop le.");
             }
 
-            user.setEmail(request.getEmail());
+            user.updateEmail(request.getEmail());
             userRepository.save(user);
 
             log.info("Da cap nhat email thanh cong cho User [{}]", userId);
-            return mapToDTO(user);
+            return convertToDTO(user);
         } catch (ClientException e) {
             throw e;
         } catch (Exception e) {
@@ -71,14 +74,11 @@ public class UserProfileService implements UserProfileUseCase {
         }
     }
 
-    private UserProfileDTO mapToDTO(User user) {
-        return UserProfileDTO.builder()
-                .id(user.getId())
-                .username(user.getUsername())
-                .email(user.getEmail())
-                .roles(user.getRoles().stream()
-                        .map(role -> role.getName())
-                        .collect(Collectors.toSet()))
-                .build();
+    private UserProfileDTO convertToDTO(User user) {
+        UserProfileDTO dto = modelMapper.map(user, UserProfileDTO.class);
+        dto.setRoles(user.getRoles().stream()
+                .map(role -> role.getName())
+                .collect(Collectors.toSet()));
+        return dto;
     }
 }

@@ -8,22 +8,26 @@ import java.util.UUID;
 import org.hibernate.annotations.SQLDelete;
 import org.hibernate.annotations.SQLRestriction;
 
+import lombok.Getter;
+import lombok.Setter;
+
 @Entity
 @Table(name = "roles", schema = "auth")
 @SQLDelete(sql = "UPDATE auth.roles SET is_deleted = true WHERE id=?")
 @SQLRestriction("is_deleted = false")
+@Getter
+@Setter
 public class RoleJpaEntity {
     @jakarta.persistence.Column(name = "is_deleted")
     private boolean isDeleted = false;
 
     @Id
-    @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
     @Column(unique = true, nullable = false)
     private String name;
 
-    @ManyToMany(fetch = FetchType.EAGER)
+    @ManyToMany(fetch = FetchType.LAZY)
     @JoinTable(
         name = "role_permissions",
         schema = "auth",
@@ -40,27 +44,4 @@ public class RoleJpaEntity {
         this.name = name;
     }
 
-    public UUID getId() {
-        return id;
-    }
-
-    public void setId(UUID id) {
-        this.id = id;
-    }
-
-    public String getName() {
-        return name;
-    }
-
-    public void setName(String name) {
-        this.name = name;
-    }
-
-    public Set<PermissionJpaEntity> getPermissions() {
-        return permissions;
-    }
-
-    public void setPermissions(Set<PermissionJpaEntity> permissions) {
-        this.permissions = permissions;
-    }
 }

@@ -12,6 +12,7 @@ public interface UserRepository {
     void save(User user);
 
     boolean existsByUsername(String username);
+    boolean existsByEmail(String email);
 
     java.util.List<User> findAll();
 

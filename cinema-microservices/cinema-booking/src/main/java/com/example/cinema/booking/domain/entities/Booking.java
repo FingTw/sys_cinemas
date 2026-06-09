@@ -3,7 +3,11 @@ package com.example.cinema.booking.domain.entities;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
+import lombok.Getter;
+import lombok.Builder;
+import com.example.cinema.common.exception.ClientException;
 
+@Getter
 public class Booking {
     private String id;
     private String userId;
@@ -15,11 +19,11 @@ public class Booking {
     private LocalDateTime createdAt;
     private List<BookingSeat> seats;
 
-    public Booking() {
-    }
+    protected Booking() {} // Cho ORM (MyBatis/JDBC)
 
+    @Builder
     public Booking(String id, String userId, String showtimeId, BigDecimal totalPrice, String status, LocalDateTime expiresAt, String paymentTransactionId, LocalDateTime createdAt, List<BookingSeat> seats) {
-        this.id = id;
+        this.id = (id != null && !id.trim().isEmpty()) ? id : java.util.UUID.randomUUID().toString();
         this.userId = userId;
         this.showtimeId = showtimeId;
         this.totalPrice = totalPrice;
@@ -30,141 +34,62 @@ public class Booking {
         this.seats = seats;
     }
 
-    // Builder manual
-    public static BookingBuilder builder() {
-        return new BookingBuilder();
-    }
+    // --- DOMAIN BEHAVIORS ---
 
-    public static class BookingBuilder {
-        private String id;
-        private String userId;
-        private String showtimeId;
-        private BigDecimal totalPrice;
-        private String status;
-        private LocalDateTime expiresAt;
-        private String paymentTransactionId;
-        private LocalDateTime createdAt;
-        private List<BookingSeat> seats;
-
-        public BookingBuilder id(String id) {
-            this.id = id;
-            return this;
+    /** Factory method khởi tạo Booking mới */
+    public static Booking create(String userId, String showtimeId, List<BookingSeat> seats, int expirationMinutes) {
+        if (seats == null || seats.isEmpty()) {
+            throw new ClientException("Danh sách ghế không được để trống!");
         }
+        
+        BigDecimal total = seats.stream()
+                .map(BookingSeat::getPrice)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
 
-        public BookingBuilder userId(String userId) {
-            this.userId = userId;
-            return this;
+        return Booking.builder()
+                .userId(userId)
+                .showtimeId(showtimeId)
+                .totalPrice(total)
+                .status("PENDING")
+                .createdAt(LocalDateTime.now())
+                .expiresAt(LocalDateTime.now().plusMinutes(expirationMinutes))
+                .seats(seats)
+                .build();
+    }
+
+    /** Khách hàng xác nhận thanh toán thành công */
+    public void confirmPayment(String transactionId) {
+        if (!"PENDING".equals(this.status)) {
+            throw new ClientException("Chỉ có thể xác nhận thanh toán cho đơn hàng đang chờ!");
         }
+        this.status = "CONFIRMED";
+        this.paymentTransactionId = transactionId;
+    }
 
-        public BookingBuilder showtimeId(String showtimeId) {
-            this.showtimeId = showtimeId;
-            return this;
+    /** User hủy đơn đặt vé */
+    public void cancelByUser(String userIdRequesting) {
+        if (this.userId != null && !this.userId.equals(userIdRequesting)) {
+            throw new ClientException("Bạn không có quyền hủy đơn đặt vé này.");
         }
-
-        public BookingBuilder totalPrice(BigDecimal totalPrice) {
-            this.totalPrice = totalPrice;
-            return this;
+        if (!"PENDING".equals(this.status)) {
+            throw new ClientException("Chỉ có thể hủy đơn đặt vé đang chờ thanh toán (PENDING).");
         }
+        this.status = "CANCELLED";
+    }
 
-        public BookingBuilder status(String status) {
-            this.status = status;
-            return this;
+    /** Hệ thống tự động hủy đơn hết hạn */
+    public void markAsExpired() {
+        if (!"PENDING".equals(this.status)) {
+            throw new ClientException("Trạng thái không hợp lệ để đánh dấu hết hạn.");
         }
+        this.status = "EXPIRED";
+    }
 
-        public BookingBuilder expiresAt(LocalDateTime expiresAt) {
-            this.expiresAt = expiresAt;
-            return this;
+    /** Hoàn tiền cho đơn hàng đã thanh toán */
+    public void refund() {
+        if (!"CONFIRMED".equals(this.status)) {
+            throw new ClientException("Đơn đặt vé chưa được thanh toán thành công (CONFIRMED) nên không thể hoàn tiền!");
         }
-
-        public BookingBuilder paymentTransactionId(String paymentTransactionId) {
-            this.paymentTransactionId = paymentTransactionId;
-            return this;
-        }
-
-        public BookingBuilder createdAt(LocalDateTime createdAt) {
-            this.createdAt = createdAt;
-            return this;
-        }
-
-        public BookingBuilder seats(List<BookingSeat> seats) {
-            this.seats = seats;
-            return this;
-        }
-
-        public Booking build() {
-            return new Booking(id, userId, showtimeId, totalPrice, status, expiresAt, paymentTransactionId, createdAt, seats);
-        }
-    }
-
-    public String getId() {
-        return id;
-    }
-
-    public void setId(String id) {
-        this.id = id;
-    }
-
-    public String getUserId() {
-        return userId;
-    }
-
-    public void setUserId(String userId) {
-        this.userId = userId;
-    }
-
-    public String getShowtimeId() {
-        return showtimeId;
-    }
-
-    public void setShowtimeId(String showtimeId) {
-        this.showtimeId = showtimeId;
-    }
-
-    public BigDecimal getTotalPrice() {
-        return totalPrice;
-    }
-
-    public void setTotalPrice(BigDecimal totalPrice) {
-        this.totalPrice = totalPrice;
-    }
-
-    public String getStatus() {
-        return status;
-    }
-
-    public void setStatus(String status) {
-        this.status = status;
-    }
-
-    public LocalDateTime getExpiresAt() {
-        return expiresAt;
-    }
-
-    public void setExpiresAt(LocalDateTime expiresAt) {
-        this.expiresAt = expiresAt;
-    }
-
-    public String getPaymentTransactionId() {
-        return paymentTransactionId;
-    }
-
-    public void setPaymentTransactionId(String paymentTransactionId) {
-        this.paymentTransactionId = paymentTransactionId;
-    }
-
-    public LocalDateTime getCreatedAt() {
-        return createdAt;
-    }
-
-    public void setCreatedAt(LocalDateTime createdAt) {
-        this.createdAt = createdAt;
-    }
-
-    public List<BookingSeat> getSeats() {
-        return seats;
-    }
-
-    public void setSeats(List<BookingSeat> seats) {
-        this.seats = seats;
+        this.status = "CANCELLED";
     }
 }

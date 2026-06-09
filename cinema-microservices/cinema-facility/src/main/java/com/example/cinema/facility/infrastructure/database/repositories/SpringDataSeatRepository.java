@@ -8,5 +8,6 @@ import java.util.List;
 @Repository
 public interface SpringDataSeatRepository extends JpaRepository<SeatJpaEntity, String> {
     List<SeatJpaEntity> findByRoomId(String roomId);
+    int countByRoomId(String roomId);
     void deleteByRoomId(String roomId);
 }

@@ -1,0 +1,102 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    Log4j2 config dung chung cho tat ca cinema microservices.
+    
+    Moi service tao file log4j2-spring.xml rieng, chi thay doi
+    property SERVICE_NAME roi XInclude file nay.
+    
+    Pattern gom:
+    - Thoi gian (co timezone)
+    - Service name (tu ThreadContext/MDC)
+    - Request ID (tu ThreadContext/MDC)
+    - Thoi gian phan hoi API (tu MDC: responseTime)
+    - Log level (co mau console)
+    - Logger name (rut gon)
+    - Message
+    
+    Tich hop san OpenTelemetry context (traceId, spanId)
+    khi OTel agent duoc bat.
+-->
+<Configuration status="WARN" monitorInterval="30" packages="com.example.cinema.common.logging">
+
+    <Properties>
+        <!-- Pattern Console: Đậm chất Keycloak/JBoss (Dễ nhìn, màu sắc tương phản cao) -->
+        <Property name="CONSOLE_PATTERN">%style{%d{HH:mm:ss}}{white} %highlight{%-5level}{FATAL=red blink, ERROR=red, WARN=yellow, INFO=bright_blue, DEBUG=green, TRACE=blue} %style{[%X{requestId}]}{bright_yellow} %style{[%style{${sys:SERVICE_NAME:-SYSTEM}}{bright_white}]}{bright_blue} %style{%logger{1.}}{bright_green} : %maskMsg%n%throwable</Property>
+        
+        <!-- Pattern cho File (khong mau, day du thong tin) -->
+        <Property name="FILE_PATTERN">%d{yyyy-MM-dd HH:mm:ss.SSS} %-5level [${sys:SERVICE_NAME:-SYSTEM}] [%X{requestId}]%notEmpty{ [%X{responseTime}]}%notEmpty{ [traceId=%X{traceId}, spanId=%X{spanId}]} %logger{50} : %maskMsg%n</Property>
+    </Properties>
+
+    <Appenders>
+        <!-- === CONSOLE APPENDER === -->
+        <Console name="Console" target="SYSTEM_OUT">
+            <PatternLayout pattern="${CONSOLE_PATTERN}" charset="UTF-8" disableAnsi="false"/>
+        </Console>
+
+        <!-- === FILE APPENDER (rolling theo ngay + kich thuoc) === -->
+        <RollingFile name="File"
+                     fileName="logs/${sys:SERVICE_NAME:-app}.log"
+                     filePattern="logs/${sys:SERVICE_NAME:-app}.%d{yyyy-MM-dd}-%i.log.gz">
+            <PatternLayout pattern="${FILE_PATTERN}" charset="UTF-8"/>
+            <Policies>
+                <TimeBasedTriggeringPolicy interval="1" modulate="true"/>
+                <SizeBasedTriggeringPolicy size="50MB"/>
+            </Policies>
+            <DefaultRolloverStrategy max="30">
+                <Delete basePath="logs" maxDepth="1">
+                    <IfFileName glob="${sys:SERVICE_NAME:-app}.*.log.gz"/>
+                    <IfLastModified age="30d"/>
+                </Delete>
+            </DefaultRolloverStrategy>
+        </RollingFile>
+    </Appenders>
+
+    <Loggers>
+        <!-- === Giam noise cua cac library === -->
+        <Logger name="org.springframework" level="WARN" additivity="false">
+            <AppenderRef ref="Console"/>
+            <AppenderRef ref="File"/>
+        </Logger>
+        <Logger name="org.hibernate" level="WARN" additivity="false">
+            <AppenderRef ref="Console"/>
+            <AppenderRef ref="File"/>
+        </Logger>
+        <Logger name="org.apache" level="WARN" additivity="false">
+            <AppenderRef ref="Console"/>
+            <AppenderRef ref="File"/>
+        </Logger>
+        <Logger name="io.lettuce" level="WARN" additivity="false">
+            <AppenderRef ref="Console"/>
+            <AppenderRef ref="File"/>
+        </Logger>
+        <Logger name="io.netty" level="WARN" additivity="false">
+            <AppenderRef ref="Console"/>
+            <AppenderRef ref="File"/>
+        </Logger>
+        
+        <!-- Flyway verbose (for migration debugging) -->
+        <Logger name="org.flywaydb" level="INFO" additivity="false">
+            <AppenderRef ref="Console"/>
+            <AppenderRef ref="File"/>
+        </Logger>
+
+        <!-- === AOP Aspect (method tracking) === -->
+        <Logger name="com.example.cinema.common.logging" level="INFO" additivity="false">
+            <AppenderRef ref="Console"/>
+            <AppenderRef ref="File"/>
+        </Logger>
+
+        <!-- === Application code === -->
+        <Logger name="com.example.cinema" level="INFO" additivity="false">
+            <AppenderRef ref="Console"/>
+            <AppenderRef ref="File"/>
+        </Logger>
+
+        <!-- === Root logger === -->
+        <Root level="INFO">
+            <AppenderRef ref="Console"/>
+            <AppenderRef ref="File"/>
+        </Root>
+    </Loggers>
+
+</Configuration>

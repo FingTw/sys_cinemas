@@ -22,8 +22,39 @@ spring:
     import: "optional:file:../.env[.properties]"
   profiles:
     active: dev
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS}
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+      properties:
+        spring.json.add.type.headers: true
 logging:
   level:
     org.flywaydb: DEBUG
     springframework.boot.autoconfigure.flyway: DEBUG
 
+camunda.bpm:
+  admin-user:
+    id: admin
+    password: ${CAMUNDA_ADMIN_PASSWORD}
+    firstName: Admin
+    lastName: Admin
+    email: admin@cinema.com
+  job-execution:
+    enabled: true
+    active: true
+  database:
+    schema-update: true
+
+resilience4j.circuitbreaker:
+  instances:
+    showtimeService:
+      registerHealthIndicator: true
+      slidingWindowSize: 10
+      minimumNumberOfCalls: 5
+      permittedNumberOfCallsInHalfOpenState: 3
+      automaticTransitionFromOpenToHalfOpenEnabled: true
+      waitDurationInOpenState: 5s
+      failureRateThreshold: 50
+      eventConsumerBufferSize: 10

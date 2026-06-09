@@ -44,6 +44,14 @@ public class UserProfileController {
     }
 
     /**
+     * Xem thông tin cá nhân của user bất kỳ bằng ID (phục vụ gọi nội bộ/admin).
+     */
+    @GetMapping("/{id}")
+    public ResponseEntity<UserProfileDTO> getUserProfileById(@PathVariable String id) {
+        return ResponseEntity.ok(userProfileUseCase.getProfile(id));
+    }
+
+    /**
      * Trích xuất userId từ JWT token trong Authorization header.
      * Token format: "Bearer <jwt>"
      */

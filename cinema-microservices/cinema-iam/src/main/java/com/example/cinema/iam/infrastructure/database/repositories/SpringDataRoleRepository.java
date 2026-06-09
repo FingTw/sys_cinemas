@@ -8,5 +8,9 @@ import java.util.UUID;
 
 @Repository
 public interface SpringDataRoleRepository extends JpaRepository<RoleJpaEntity, UUID> {
+    @org.springframework.data.jpa.repository.EntityGraph(attributePaths = {"permissions"})
     Optional<RoleJpaEntity> findByName(String name);
+
+    @org.springframework.data.jpa.repository.EntityGraph(attributePaths = {"permissions"})
+    Optional<RoleJpaEntity> findById(UUID id);
 }

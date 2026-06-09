@@ -7,7 +7,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 
 import java.util.Optional;
 
-@FeignClient(name = "catalog-service", url = "${app.services.catalog.url:http://localhost:8082/api/v1/movies}")
+@FeignClient(name = "catalog-service", url = "${app.services.catalog.url}")
 public interface CatalogClient {
     @GetMapping("/{id}")
     Optional<MovieDTO> getMovieById(@PathVariable("id") String id);

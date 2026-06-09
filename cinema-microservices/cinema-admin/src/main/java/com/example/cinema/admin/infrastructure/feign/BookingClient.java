@@ -1,0 +1,18 @@
+package com.example.cinema.admin.infrastructure.feign;
+
+import com.example.cinema.admin.application.dto.BookingDetailResponse;
+import org.springframework.cloud.openfeign.FeignClient;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import java.util.Optional;
+
+/**
+ * Feign Client gọi sang cinema-booking service.
+ * Dùng internal endpoint không cần kiểm tra quyền sở hữu userId.
+ */
+@FeignClient(name = "cinema-booking", url = "${app.services.booking.url}")
+public interface BookingClient {
+
+    @GetMapping("/api/internal/bookings/{bookingId}")
+    Optional<BookingDetailResponse> getBookingById(@PathVariable("bookingId") String bookingId);
+}

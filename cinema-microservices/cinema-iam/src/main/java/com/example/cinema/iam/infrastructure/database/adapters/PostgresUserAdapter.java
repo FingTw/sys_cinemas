@@ -54,6 +54,11 @@ public class PostgresUserAdapter implements UserRepository {
         return springDataUserRepository.existsByUsername(username);
     }
 
+    @Override
+    public boolean existsByEmail(String email) {
+        return springDataUserRepository.existsByEmail(email);
+    }
+
     private User mapToDomain(UserJpaEntity entity) {
         return User.builder()
             .id(entity.getId())

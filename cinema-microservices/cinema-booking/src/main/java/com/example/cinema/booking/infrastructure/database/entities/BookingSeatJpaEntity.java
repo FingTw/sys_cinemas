@@ -1,17 +1,19 @@
 package com.example.cinema.booking.infrastructure.database.entities;
 
 import jakarta.persistence.*;
-
 import java.math.BigDecimal;
-
 import org.hibernate.annotations.SQLDelete;
 import org.hibernate.annotations.SQLRestriction;
+import lombok.Getter;
+import lombok.Setter;
 
 @Entity
 @Table(name = "booking_seats", schema = "booking", uniqueConstraints = {
     // Bao ve lop Database: Mot ghe chi duoc phep ton tai 1 lan cho 1 suat chieu
     @UniqueConstraint(name = "uk_seat_showtime", columnNames = {"seatId", "showtimeId"})
 })
+@Getter
+@Setter
 public class BookingSeatJpaEntity {
     @jakarta.persistence.Column(name = "is_deleted")
     private boolean isDeleted = false;
@@ -84,45 +86,5 @@ public class BookingSeatJpaEntity {
         public BookingSeatJpaEntity build() {
             return new BookingSeatJpaEntity(id, booking, seatId, showtimeId, price);
         }
-    }
-
-    public String getId() {
-        return id;
-    }
-
-    public void setId(String id) {
-        this.id = id;
-    }
-
-    public BookingJpaEntity getBooking() {
-        return booking;
-    }
-
-    public void setBooking(BookingJpaEntity booking) {
-        this.booking = booking;
-    }
-
-    public String getSeatId() {
-        return seatId;
-    }
-
-    public void setSeatId(String seatId) {
-        this.seatId = seatId;
-    }
-
-    public String getShowtimeId() {
-        return showtimeId;
-    }
-
-    public void setShowtimeId(String showtimeId) {
-        this.showtimeId = showtimeId;
-    }
-
-    public BigDecimal getPrice() {
-        return price;
-    }
-
-    public void setPrice(BigDecimal price) {
-        this.price = price;
     }
 }

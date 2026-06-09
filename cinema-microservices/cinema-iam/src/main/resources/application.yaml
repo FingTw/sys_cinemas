@@ -18,6 +18,7 @@ spring:
     create-schemas: true
     baseline-on-migrate: true
     repair-on-migrate: true
+    out-of-order: true
   config:
     import: "optional:file:../.env[.properties]"
   profiles:

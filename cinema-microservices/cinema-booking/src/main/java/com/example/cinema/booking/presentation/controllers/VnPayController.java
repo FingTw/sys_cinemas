@@ -1,6 +1,6 @@
 package com.example.cinema.booking.presentation.controllers;
 
-import com.example.cinema.booking.application.usecases.BookingUseCase;
+import com.example.cinema.booking.application.ports.in.BookingService;
 import com.example.cinema.booking.application.ports.out.PaymentGatewayPort;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.beans.factory.annotation.Value;
@@ -8,26 +8,23 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.view.RedirectView;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.Map;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+
+import org.camunda.bpm.engine.RuntimeService;
 
 @RestController
 @RequestMapping("/api/v1/vnpay")
+@RequiredArgsConstructor
+@Slf4j
 public class VnPayController {
 
-    private static final Logger log = LoggerFactory.getLogger(VnPayController.class);
-
     private final PaymentGatewayPort paymentGatewayPort;
-    private final BookingUseCase bookingUseCase;
-
-    public VnPayController(PaymentGatewayPort paymentGatewayPort, BookingUseCase bookingUseCase) {
-        this.paymentGatewayPort = paymentGatewayPort;
-        this.bookingUseCase = bookingUseCase;
-    }
+    private final BookingService bookingService;
+    private final RuntimeService runtimeService;
 
     @Value("${app.vnpay.frontend-url}")
     private String frontendUrl;
@@ -47,8 +44,18 @@ public class VnPayController {
         String responseCode = request.getParameter("vnp_ResponseCode");
 
         if (isValid && "00".equals(responseCode)) {
-            // Thanh toan thanh cong
-            bookingUseCase.confirmPayment(bookingId, request.getParameter("vnp_TransactionNo"));
+            // Thanh toan thanh cong -> Gui Message cho Camunda
+            try {
+                runtimeService.createMessageCorrelation("PaymentReceivedMessage")
+                        .processInstanceBusinessKey(bookingId)
+                        .setVariable("vnp_TransactionNo", request.getParameter("vnp_TransactionNo"))
+                        .correlate();
+            } catch (Exception e) {
+                log.error("Loi khi gui message den Camunda cho Booking [{}]: {}. Bat dau thuc thi confirm truc tiep.", 
+                        bookingId, e.getMessage());
+                // Fallback de tranh mat tien khach hang
+                bookingService.confirmPayment(bookingId, request.getParameter("vnp_TransactionNo"));
+            }
             return new RedirectView(frontendUrl + "?status=success&bookingId=" + bookingId);
         } else {
             // Thanh toan that bai hoac chu ky khong khop

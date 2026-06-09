@@ -1,19 +1,29 @@
 package com.example.cinema.common.security;
 
-import java.util.Date;
-
-import javax.crypto.SecretKey;
-
+import com.example.cinema.common.exception.AuthException;
+import io.jsonwebtoken.Jwts;
+import io.jsonwebtoken.security.Keys;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
-import io.jsonwebtoken.Jwts;
-import io.jsonwebtoken.security.Keys;
+import javax.crypto.SecretKey;
+import java.util.Collection;
+import java.util.Date;
+import java.util.stream.Collectors;
 
+/**
+ * Cung cấp các thao tác với JWT: tạo token, validate, trích xuất claims.
+ *
+ * Khi token không hợp lệ, ném ra AuthException thay vì trả về boolean.
+ * Điều này đảm bảo lỗi luôn được xử lý rõ ràng ở tầng trên.
+ */
 @Component
 public class JwtTokenProvider {
 
-    // Khai báo secret key dài ít nhất 32 ký tự trong application.yml
+    private static final Logger log = LoggerFactory.getLogger(JwtTokenProvider.class);
+
     @Value("${app.security.jwt-secret}")
     private String jwtSecret;
 
@@ -24,17 +34,16 @@ public class JwtTokenProvider {
         return Keys.hmacShaKeyFor(jwtSecret.getBytes());
     }
 
-    public String generateToken(String username, java.util.Collection<String> roles, java.util.Collection<String> permissions, String userId, Long tokenVersion) {
+    public String generateToken(String username, Collection<String> roles,
+                                Collection<String> permissions, String userId, Long tokenVersion) {
         String rolesString = roles.stream()
                 .map(role -> "ROLE_" + role)
-                .collect(java.util.stream.Collectors.joining(","));
-
-        String permissionsString = String.join(",", permissions);
+                .collect(Collectors.joining(","));
 
         return Jwts.builder()
                 .subject(username)
                 .claim("roles", rolesString)
-                .claim("permissions", permissionsString)
+                .claim("permissions", String.join(",", permissions))
                 .claim("userId", userId)
                 .claim("tokenVersion", tokenVersion)
                 .issuedAt(new Date())
@@ -43,47 +52,74 @@ public class JwtTokenProvider {
                 .compact();
     }
 
-    public String getPermissionsFromToken(String token) {
-        Object permissions = Jwts.parser().verifyWith(getSigningKey()).build().parseSignedClaims(token).getPayload().get("permissions");
-        if (permissions instanceof String permissionString) {
-            return permissionString;
+    /**
+     * Validate JWT. Ném AuthException nếu token không hợp lệ.
+     * Không có trường hợp trả về false — luôn thành công hoặc ném exception.
+     */
+    public void validateToken(String authToken) {
+        try {
+            Jwts.parser().verifyWith(getSigningKey()).build().parseSignedClaims(authToken);
+        } catch (io.jsonwebtoken.ExpiredJwtException e) {
+            log.warn("Token expired for subject: {}", extractSubjectSafely(e));
+            throw AuthException.tokenExpired();
+        } catch (io.jsonwebtoken.JwtException | IllegalArgumentException e) {
+            log.warn("Invalid token: {}", e.getClass().getSimpleName());
+            throw AuthException.tokenInvalid();
         }
-        return permissions != null ? permissions.toString() : null;
     }
 
-    public boolean validateToken(String authToken) {
+    /**
+     * Kiểm tra nhanh token có hợp lệ không (không ném exception).
+     */
+    public boolean isValid(String authToken) {
         try {
             Jwts.parser().verifyWith(getSigningKey()).build().parseSignedClaims(authToken);
             return true;
-        } catch (io.jsonwebtoken.ExpiredJwtException e) {
-            System.err.println("Token expired: " + e.getMessage());
-        } catch (io.jsonwebtoken.JwtException | IllegalArgumentException e) {
-            System.err.println("Token invalid: " + e.getMessage());
+        } catch (Exception e) {
+            return false;
         }
-        return false;
     }
 
     public String getUsernameFromToken(String token) {
-        return Jwts.parser().verifyWith(getSigningKey()).build().parseSignedClaims(token).getPayload().getSubject();
+        return parseClaims(token).getSubject();
     }
 
     public String getRolesFromToken(String token) {
-        return Jwts.parser().verifyWith(getSigningKey()).build().parseSignedClaims(token).getPayload().get("roles", String.class);
+        return parseClaims(token).get("roles", String.class);
+    }
+
+    public String getPermissionsFromToken(String token) {
+        Object permissions = parseClaims(token).get("permissions");
+        return permissions instanceof String s ? s : (permissions != null ? permissions.toString() : null);
     }
 
     public String getUserIdFromToken(String token) {
-        return Jwts.parser().verifyWith(getSigningKey()).build().parseSignedClaims(token).getPayload().get("userId", String.class);
+        return parseClaims(token).get("userId", String.class);
     }
 
     public Long getVersionFromToken(String token) {
-        Object version = Jwts.parser().verifyWith(getSigningKey()).build().parseSignedClaims(token).getPayload().get("tokenVersion");
-        if (version instanceof Number number) {
-            return number.longValue();
-        }
-        return null;
+        Object version = parseClaims(token).get("tokenVersion");
+        return version instanceof Number n ? n.longValue() : null;
     }
 
     public Date getExpirationDateFromToken(String token) {
-        return Jwts.parser().verifyWith(getSigningKey()).build().parseSignedClaims(token).getPayload().getExpiration();
+        return parseClaims(token).getExpiration();
+    }
+
+    // =========================================================================
+    // Private helpers
+    // =========================================================================
+
+    private io.jsonwebtoken.Claims parseClaims(String token) {
+        return Jwts.parser().verifyWith(getSigningKey()).build()
+                .parseSignedClaims(token).getPayload();
+    }
+
+    private String extractSubjectSafely(io.jsonwebtoken.ExpiredJwtException e) {
+        try {
+            return e.getClaims().getSubject();
+        } catch (Exception ignored) {
+            return "unknown";
+        }
     }
 }

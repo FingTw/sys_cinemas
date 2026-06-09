@@ -9,6 +9,43 @@ services:
   # ─────────────────────────────────────────────────────────────
   # INFRASTRUCTURE GROUP
   # ─────────────────────────────────────────────────────────────
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.4.0
+    container_name: cinema-zookeeper
+    profiles: [ "infra", "all" ]
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+      TZ: ${APP_TIMEZONE:-Asia/Ho_Chi_Minh}
+    networks:
+      - cinema-network
+    <<: *resource-limits
+
+  kafka:
+    image: confluentinc/cp-kafka:7.4.0
+    container_name: cinema-kafka
+    profiles: [ "infra", "all" ]
+    ports:
+      - "9092:9092"
+    depends_on:
+      - zookeeper
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:29092,PLAINTEXT_HOST://localhost:9092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      TZ: ${APP_TIMEZONE:-Asia/Ho_Chi_Minh}
+      KAFKA_HEAP_OPTS: "-Xmx256M -Xms256M"
+    networks:
+      - cinema-network
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: "384M"
+
   cinema-db:
     image: postgres:16
     container_name: cinema-postgres
@@ -17,6 +54,7 @@ services:
       POSTGRES_USER: ${DB_USERNAME:-postgres}
       POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres123}
       POSTGRES_DB: cinema_db
+      TZ: ${APP_TIMEZONE:-Asia/Ho_Chi_Minh}
     ports:
       - "${DB_PORT:-5432}:5432"
     volumes:
@@ -35,11 +73,17 @@ services:
     image: redis:7-alpine
     container_name: cinema-redis
     profiles: [ "infra", "all" ]
+    environment:
+      TZ: ${APP_TIMEZONE:-Asia/Ho_Chi_Minh}
     ports:
       - "${REDIS_PORT:-6379}:6379"
     networks:
       - cinema-network
-    <<: *resource-limits
+    deploy:
+      resources:
+        limits:
+          cpus: "0.25"
+          memory: "128M"
 
   cinema-keycloak:
     image: quay.io/keycloak/keycloak:26.2.5
@@ -58,8 +102,7 @@ services:
       KC_HOSTNAME_STRICT: "false"
       KC_PROXY_HEADERS: xforwarded
       CINEMA_DB_URL: jdbc:postgresql://cinema-db:5432/cinema_db
-      CINEMA_DB_USERNAME: postgres
-      CINEMA_DB_PASSWORD: postgres123
+      TZ: ${APP_TIMEZONE:-Asia/Ho_Chi_Minh}
     ports:
       - "8089:8080"
     volumes:
@@ -70,7 +113,6 @@ services:
         condition: service_healthy
     networks:
       - cinema-network
-    <<: *resource-limits
 
   # ─────────────────────────────────────────────────────────────
   # GATEWAY GROUP
@@ -89,14 +131,24 @@ services:
       - .env
     environment:
       IAM_SERVICE_URL: http://cinema-iam:8081
-      CATALOG_SERVICE_URL: http://cinema-catalog:8082
-      FACILITY_SERVICE_URL: http://cinema-facility:8083
-      SCHEDULING_SERVICE_URL: http://cinema-scheduling:8084
-      BOOKING_SERVICE_URL: http://cinema-booking:8085
-      JAVA_OPTS: "-Xms128m -Xmx320m"
+      CATALOG_SERVICE_URL: http://host.docker.internal:8082
+      FACILITY_SERVICE_URL: http://host.docker.internal:8083
+      SCHEDULING_SERVICE_URL: http://host.docker.internal:8084
+      BOOKING_SERVICE_URL: http://host.docker.internal:8085
+      ADMIN_SERVICE_URL: http://host.docker.internal:8086
+      REDIS_HOST: cinema-redis
+      JAVA_OPTS: "-Xms64m -Xmx128m"
+      TZ: ${APP_TIMEZONE:-Asia/Ho_Chi_Minh}
+      OTEL_JAVAAGENT_ENABLED: "${OTEL_ENABLED:-false}"
+      OTEL_SERVICE_NAME: cinema-gateway
+      OTEL_EXPORTER_OTLP_ENDPOINT: "${OTEL_EXPORTER_ENDPOINT:-http://localhost:4317}"
     networks:
       - cinema-network
-    <<: *resource-limits
+    # deploy:
+    #   resources:
+    #     limits:
+    #       cpus: "0.25"
+    #       memory: "256M"
 
   # ─────────────────────────────────────────────────────────────
   # APPLICATION MICROSERVICES GROUP
@@ -116,14 +168,24 @@ services:
       REDIS_HOST: ${DOCKER_REDIS_HOST:-cinema-redis}
       KEYCLOAK_ISSUER_URI: ${KEYCLOAK_ISSUER_URI_INTERNAL:-http://cinema-keycloak:8080/realms/cinema-realm}
       JAVA_OPTS: "-Xms128m -Xmx320m"
+      TZ: ${APP_TIMEZONE:-Asia/Ho_Chi_Minh}
+      OTEL_JAVAAGENT_ENABLED: "${OTEL_ENABLED:-false}"
+      OTEL_SERVICE_NAME: cinema-iam
+      OTEL_EXPORTER_OTLP_ENDPOINT: "${OTEL_EXPORTER_ENDPOINT:-http://localhost:4317}"
     depends_on:
       cinema-db:
         condition: service_healthy
       cinema-keycloak:
         condition: service_started
+      cinema-redis:
+        condition: service_started
     networks:
       - cinema-network
-    <<: *resource-limits
+    # deploy:
+    #   resources:
+    #     limits:
+    #       cpus: "0.25"
+    #       memory: "256M"
 
   cinema-catalog:
     build:
@@ -138,6 +200,10 @@ services:
     environment:
       DB_HOST: ${DOCKER_DB_HOST:-cinema-db}
       JAVA_OPTS: "-Xms128m -Xmx320m"
+      TZ: ${APP_TIMEZONE:-Asia/Ho_Chi_Minh}
+      OTEL_JAVAAGENT_ENABLED: "${OTEL_ENABLED:-false}"
+      OTEL_SERVICE_NAME: cinema-catalog
+      OTEL_EXPORTER_OTLP_ENDPOINT: "${OTEL_EXPORTER_ENDPOINT:-http://localhost:4317}"
     depends_on:
       cinema-db:
         condition: service_healthy
@@ -158,6 +224,10 @@ services:
     environment:
       DB_HOST: ${DOCKER_DB_HOST:-cinema-db}
       JAVA_OPTS: "-Xms128m -Xmx320m"
+      TZ: ${APP_TIMEZONE:-Asia/Ho_Chi_Minh}
+      OTEL_JAVAAGENT_ENABLED: "${OTEL_ENABLED:-false}"
+      OTEL_SERVICE_NAME: cinema-facility
+      OTEL_EXPORTER_OTLP_ENDPOINT: "${OTEL_EXPORTER_ENDPOINT:-http://localhost:4317}"
     depends_on:
       cinema-db:
         condition: service_healthy
@@ -180,6 +250,10 @@ services:
       APP_SERVICES_CATALOG_URL: http://cinema-catalog:8082/api/v1/movies
       APP_SERVICES_FACILITY_URL: http://cinema-facility:8083/api/v1/rooms
       JAVA_OPTS: "-Xms128m -Xmx320m"
+      TZ: ${APP_TIMEZONE:-Asia/Ho_Chi_Minh}
+      OTEL_JAVAAGENT_ENABLED: "${OTEL_ENABLED:-false}"
+      OTEL_SERVICE_NAME: cinema-scheduling
+      OTEL_EXPORTER_OTLP_ENDPOINT: "${OTEL_EXPORTER_ENDPOINT:-http://localhost:4317}"
     depends_on:
       cinema-db:
         condition: service_healthy
@@ -199,13 +273,74 @@ services:
       - .env
     environment:
       DB_HOST: ${DOCKER_DB_HOST:-cinema-db}
+      KAFKA_BOOTSTRAP_SERVERS: kafka:29092
+      APP_SERVICES_IAM_URL: http://cinema-iam:8081
       APP_SERVICES_SCHEDULING_URL: http://cinema-scheduling:8084
       APP_SERVICES_FACILITY_URL: http://cinema-facility:8083
       APP_SERVICES_CATALOG_URL: http://cinema-catalog:8082
       JAVA_OPTS: "-Xms128m -Xmx320m"
+      TZ: ${APP_TIMEZONE:-Asia/Ho_Chi_Minh}
+      OTEL_JAVAAGENT_ENABLED: "${OTEL_ENABLED:-false}"
+      OTEL_SERVICE_NAME: cinema-booking
+      OTEL_EXPORTER_OTLP_ENDPOINT: "${OTEL_EXPORTER_ENDPOINT:-http://localhost:4317}"
     depends_on:
       cinema-db:
         condition: service_healthy
+    networks:
+      - cinema-network
+    <<: *resource-limits
+
+  cinema-admin:
+    build:
+      context: ./cinema-microservices
+      dockerfile: Dockerfile.runtime
+      args:
+        MODULE_NAME: cinema-admin
+    container_name: cinema-admin
+    profiles: [ "app", "all" ]
+    ports:
+      - "8086:8086"
+    env_file:
+      - .env
+    environment:
+      DB_HOST: ${DOCKER_DB_HOST:-cinema-db}
+      REDIS_HOST: ${DOCKER_REDIS_HOST:-cinema-redis}
+      KAFKA_BOOTSTRAP_SERVERS: kafka:29092
+      JAVA_OPTS: "-Xms128m -Xmx320m"
+      TZ: ${APP_TIMEZONE:-Asia/Ho_Chi_Minh}
+      OTEL_JAVAAGENT_ENABLED: "${OTEL_ENABLED:-false}"
+      OTEL_SERVICE_NAME: cinema-admin
+      OTEL_EXPORTER_OTLP_ENDPOINT: "${OTEL_EXPORTER_ENDPOINT:-http://localhost:4317}"
+    depends_on:
+      cinema-db:
+        condition: service_healthy
+    networks:
+      - cinema-network
+    <<: *resource-limits
+
+  cinema-notification:
+    build:
+      context: ./cinema-microservices
+      dockerfile: Dockerfile.runtime
+      args:
+        MODULE_NAME: cinema-notification
+    container_name: cinema-notification
+    profiles: [ "app", "all" ]
+    env_file:
+      - .env
+    environment:
+      KAFKA_BOOTSTRAP_SERVERS: kafka:29092
+      MAIL_HOST: ${MAIL_HOST:-smtp.gmail.com}
+      MAIL_PORT: ${MAIL_PORT:-587}
+      MAIL_USERNAME: ${MAIL_USERNAME}
+      MAIL_PASSWORD: ${MAIL_PASSWORD}
+      JAVA_OPTS: "-Xms128m -Xmx320m"
+      TZ: ${APP_TIMEZONE:-Asia/Ho_Chi_Minh}
+      OTEL_JAVAAGENT_ENABLED: "${OTEL_ENABLED:-false}"
+      OTEL_SERVICE_NAME: cinema-notification
+      OTEL_EXPORTER_OTLP_ENDPOINT: "${OTEL_EXPORTER_ENDPOINT:-http://localhost:4317}"
+    depends_on:
+      - kafka
     networks:
       - cinema-network
     <<: *resource-limits
