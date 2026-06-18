@@ -8,6 +8,7 @@ import com.example.cinema.iam.domain.entities.User;
 public interface UserRepository {
 
     Optional<User> findByUsername(String username);
+    Optional<User> findBySsoSubject(String ssoSubject);
 
     void save(User user);
 
@@ -18,7 +19,5 @@ public interface UserRepository {
 
     Optional<User> findById(String id);
     void deleteById(String id);
-    Long findTokenVersionById(String userId);
-    Long incrementTokenVersion(String userId);
-
 }
+

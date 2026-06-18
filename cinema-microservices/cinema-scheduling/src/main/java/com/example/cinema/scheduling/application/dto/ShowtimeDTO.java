@@ -15,6 +15,9 @@ public class ShowtimeDTO {
     private Integer movieDuration;
     private String roomId;
     private String roomName;     // For display purposes
+    private String cinemaId;
+    private String cinemaName;
+    private String cinemaComplexName;
     private LocalDateTime startTime;
     private LocalDateTime endTime;
     private String status;

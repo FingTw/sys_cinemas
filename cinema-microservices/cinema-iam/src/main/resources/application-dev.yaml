@@ -43,8 +43,10 @@ spring:
           issuer-uri: ${KEYCLOAK_ISSUER_URI}
 
 keycloak:
-  token-uri: ${KEYCLOAK_ISSUER_URI}/protocol/openid-connect/token
-  client-id: ${KEYCLOAK_CLIENT_ID}
+  token-uri:   ${KEYCLOAK_ISSUER_URI}/protocol/openid-connect/token
+  jwks-uri:    ${KEYCLOAK_ISSUER_URI}/protocol/openid-connect/certs
+  logout-uri:  ${KEYCLOAK_ISSUER_URI}/protocol/openid-connect/logout
+  client-id:   ${KEYCLOAK_CLIENT_ID}
   client-secret: ${KEYCLOAK_CLIENT_SECRET}
 
 app:

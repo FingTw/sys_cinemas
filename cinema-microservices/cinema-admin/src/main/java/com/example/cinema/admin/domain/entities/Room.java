@@ -13,20 +13,23 @@ public class Room {
     private String status; // ACTIVE, MAINTENANCE
     private Integer gridRows;
     private Integer gridCols;
+    private String cinemaId;
 
     @Builder
-    public Room(String id, String name, String status, Integer gridRows, Integer gridCols) {
+    public Room(String id, String name, String status, Integer gridRows, Integer gridCols, String cinemaId) {
         this.id = (id != null && !id.trim().isEmpty()) ? id : java.util.UUID.randomUUID().toString();
         this.name = name;
         this.status = status;
         this.gridRows = gridRows;
         this.gridCols = gridCols;
+        this.cinemaId = cinemaId;
     }
 
-    public void updateDetails(String name, String status, Integer gridRows, Integer gridCols) {
+    public void updateDetails(String name, String status, Integer gridRows, Integer gridCols, String cinemaId) {
         this.name = name;
         this.status = status;
         this.gridRows = gridRows;
         this.gridCols = gridCols;
+        this.cinemaId = cinemaId;
     }
 }

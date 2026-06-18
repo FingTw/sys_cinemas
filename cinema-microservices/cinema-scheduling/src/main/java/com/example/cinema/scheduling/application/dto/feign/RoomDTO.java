@@ -12,4 +12,7 @@ public class RoomDTO {
     private Integer totalSeats;
     private String type;
     private boolean isActive;
+    private String cinemaId;
+    private String cinemaName;
+    private String cinemaComplexName;
 }

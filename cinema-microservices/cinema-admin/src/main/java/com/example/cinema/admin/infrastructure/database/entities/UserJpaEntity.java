@@ -52,14 +52,11 @@ public class UserJpaEntity {
     )
     private Set<PermissionJpaEntity> permissions = new HashSet<>();
 
-    @Column(length = 1000)
-    private String activeToken;
+
 
     @Builder.Default
     @Column(nullable = false)
     private boolean isBlocked = false;
 
-    @Builder.Default
-    @Column(nullable = false)
-    private Long tokenVersion = 1L;
+
 }

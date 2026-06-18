@@ -74,21 +74,21 @@ public class RedisCacheConfig {
         Map<String, RedisCacheConfiguration> cacheConfigs = new HashMap<>();
 
         // --- Catalog Service ---
-        cacheConfigs.put("movies", defaultConfig.entryTtl(Duration.ofMinutes(10)));
-        cacheConfigs.put("movie", defaultConfig.entryTtl(Duration.ofMinutes(15)));
-        cacheConfigs.put("movieCount", defaultConfig.entryTtl(Duration.ofMinutes(10)));
+        cacheConfigs.put("movies", defaultConfig.entryTtl(Duration.ofSeconds(5)));
+        cacheConfigs.put("movie", defaultConfig.entryTtl(Duration.ofSeconds(5)));
+        cacheConfigs.put("movieCount", defaultConfig.entryTtl(Duration.ofSeconds(5)));
 
         // --- Scheduling Service ---
-        cacheConfigs.put("showtimes", defaultConfig.entryTtl(Duration.ofMinutes(5)));
-        cacheConfigs.put("showtime", defaultConfig.entryTtl(Duration.ofMinutes(5)));
-        cacheConfigs.put("showtimesByMovie", defaultConfig.entryTtl(Duration.ofMinutes(5)));
+        cacheConfigs.put("showtimes", defaultConfig.entryTtl(Duration.ofSeconds(5)));
+        cacheConfigs.put("showtime", defaultConfig.entryTtl(Duration.ofSeconds(5)));
+        cacheConfigs.put("showtimesByMovie", defaultConfig.entryTtl(Duration.ofSeconds(5)));
 
         // --- Facility Service ---
-        cacheConfigs.put("rooms", defaultConfig.entryTtl(Duration.ofMinutes(30)));
-        cacheConfigs.put("room", defaultConfig.entryTtl(Duration.ofMinutes(30)));
-        cacheConfigs.put("seats", defaultConfig.entryTtl(Duration.ofMinutes(30)));
+        cacheConfigs.put("rooms", defaultConfig.entryTtl(Duration.ofSeconds(5)));
+        cacheConfigs.put("room", defaultConfig.entryTtl(Duration.ofSeconds(5)));
+        cacheConfigs.put("seats", defaultConfig.entryTtl(Duration.ofSeconds(5)));
 
-        log.info(">>> Cache TTL: movies=10m, movie=15m, showtimes=5m, rooms=30m <<<");
+        log.info(">>> Cache TTL: movies=5s, movie=5s, showtimes=5s, rooms=5s <<<");
 
         return RedisCacheManager.builder(connectionFactory)
                 .cacheDefaults(defaultConfig)

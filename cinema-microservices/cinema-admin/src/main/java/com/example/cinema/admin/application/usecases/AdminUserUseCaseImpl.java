@@ -66,9 +66,10 @@ public class AdminUserUseCaseImpl implements AdminUserUseCase {
 
     private AdminUserDTO convertToDTO(User user) {
         boolean isOnline = false;
-        if (user.getActiveToken() != null && !user.getActiveToken().isEmpty()) {
-            boolean isValidJwt = jwtTokenProvider.isValid(user.getActiveToken());
-            boolean isBlacklisted = cachePort.get("blacklist:" + user.getActiveToken()) != null;
+        String activeToken = cachePort.get("valid_token:" + user.getId());
+        if (activeToken != null && !activeToken.isEmpty()) {
+            boolean isValidJwt = jwtTokenProvider.isValid(activeToken);
+            boolean isBlacklisted = cachePort.get("blacklist:" + activeToken) != null;
             isOnline = isValidJwt && !isBlacklisted;
         }
 
@@ -87,16 +88,16 @@ public class AdminUserUseCaseImpl implements AdminUserUseCase {
     }
 
     private void invalidateToken(User user) {
-        if (user.getActiveToken() != null && !user.getActiveToken().isEmpty()) {
+        String activeToken = cachePort.get("valid_token:" + user.getId());
+        if (activeToken != null && !activeToken.isEmpty()) {
             try {
-                Date expiresAt = jwtTokenProvider.getExpirationDateFromToken(user.getActiveToken());
-                cachePort.set("blacklist:" + user.getActiveToken(), "true", Duration.between(Instant.now(), expiresAt.toInstant()));
+                Date expiresAt = jwtTokenProvider.getExpirationDateFromToken(activeToken);
+                cachePort.set("blacklist:" + activeToken, "true", Duration.between(Instant.now(), expiresAt.toInstant()));
                 log.info("Invalidated token for User [{}]", user.getUsername());
             } catch (Exception e) {
                 log.warn("Failed to blacklist Token for User [{}] - Error: {}", user.getUsername(), e.getMessage());
             }
         }
-        user.clearActiveToken();
     }
 
     @Override

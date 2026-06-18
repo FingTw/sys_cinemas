@@ -136,19 +136,19 @@ services:
       SCHEDULING_SERVICE_URL: http://host.docker.internal:8084
       BOOKING_SERVICE_URL: http://host.docker.internal:8085
       ADMIN_SERVICE_URL: http://host.docker.internal:8086
+      NOTIFICATION_SERVICE_URL: http://host.docker.internal:8087
       REDIS_HOST: cinema-redis
       JAVA_OPTS: "-Xms64m -Xmx128m"
       TZ: ${APP_TIMEZONE:-Asia/Ho_Chi_Minh}
       OTEL_JAVAAGENT_ENABLED: "${OTEL_ENABLED:-false}"
       OTEL_SERVICE_NAME: cinema-gateway
       OTEL_EXPORTER_OTLP_ENDPOINT: "${OTEL_EXPORTER_ENDPOINT:-http://localhost:4317}"
+      LOGGING_FILE_NAME: /app/logs/cinema-gateway.log
+    volumes:
+      - cinema_logs:/app/logs
     networks:
       - cinema-network
-    # deploy:
-    #   resources:
-    #     limits:
-    #       cpus: "0.25"
-    #       memory: "256M"
+    <<: *resource-limits
 
   # ─────────────────────────────────────────────────────────────
   # APPLICATION MICROSERVICES GROUP
@@ -172,6 +172,9 @@ services:
       OTEL_JAVAAGENT_ENABLED: "${OTEL_ENABLED:-false}"
       OTEL_SERVICE_NAME: cinema-iam
       OTEL_EXPORTER_OTLP_ENDPOINT: "${OTEL_EXPORTER_ENDPOINT:-http://localhost:4317}"
+      LOGGING_FILE_NAME: /app/logs/cinema-iam.log
+    volumes:
+      - cinema_logs:/app/logs
     depends_on:
       cinema-db:
         condition: service_healthy
@@ -181,11 +184,7 @@ services:
         condition: service_started
     networks:
       - cinema-network
-    # deploy:
-    #   resources:
-    #     limits:
-    #       cpus: "0.25"
-    #       memory: "256M"
+    <<: *resource-limits
 
   cinema-catalog:
     build:
@@ -194,7 +193,7 @@ services:
       args:
         MODULE_NAME: cinema-catalog
     container_name: cinema-catalog
-    profiles: [ "app", "all" ]
+    profiles: [ "manual" ]
     env_file:
       - .env
     environment:
@@ -204,6 +203,9 @@ services:
       OTEL_JAVAAGENT_ENABLED: "${OTEL_ENABLED:-false}"
       OTEL_SERVICE_NAME: cinema-catalog
       OTEL_EXPORTER_OTLP_ENDPOINT: "${OTEL_EXPORTER_ENDPOINT:-http://localhost:4317}"
+      LOGGING_FILE_NAME: /app/logs/cinema-catalog.log
+    volumes:
+      - cinema_logs:/app/logs
     depends_on:
       cinema-db:
         condition: service_healthy
@@ -218,7 +220,7 @@ services:
       args:
         MODULE_NAME: cinema-facility
     container_name: cinema-facility
-    profiles: [ "app", "all" ]
+    profiles: [ "manual" ]
     env_file:
       - .env
     environment:
@@ -228,6 +230,9 @@ services:
       OTEL_JAVAAGENT_ENABLED: "${OTEL_ENABLED:-false}"
       OTEL_SERVICE_NAME: cinema-facility
       OTEL_EXPORTER_OTLP_ENDPOINT: "${OTEL_EXPORTER_ENDPOINT:-http://localhost:4317}"
+      LOGGING_FILE_NAME: /app/logs/cinema-facility.log
+    volumes:
+      - cinema_logs:/app/logs
     depends_on:
       cinema-db:
         condition: service_healthy
@@ -242,7 +247,7 @@ services:
       args:
         MODULE_NAME: cinema-scheduling
     container_name: cinema-scheduling
-    profiles: [ "app", "all" ]
+    profiles: [ "manual" ]
     env_file:
       - .env
     environment:
@@ -254,6 +259,9 @@ services:
       OTEL_JAVAAGENT_ENABLED: "${OTEL_ENABLED:-false}"
       OTEL_SERVICE_NAME: cinema-scheduling
       OTEL_EXPORTER_OTLP_ENDPOINT: "${OTEL_EXPORTER_ENDPOINT:-http://localhost:4317}"
+      LOGGING_FILE_NAME: /app/logs/cinema-scheduling.log
+    volumes:
+      - cinema_logs:/app/logs
     depends_on:
       cinema-db:
         condition: service_healthy
@@ -268,7 +276,7 @@ services:
       args:
         MODULE_NAME: cinema-booking
     container_name: cinema-booking
-    profiles: [ "app", "all" ]
+    profiles: [ "manual" ]
     env_file:
       - .env
     environment:
@@ -283,6 +291,9 @@ services:
       OTEL_JAVAAGENT_ENABLED: "${OTEL_ENABLED:-false}"
       OTEL_SERVICE_NAME: cinema-booking
       OTEL_EXPORTER_OTLP_ENDPOINT: "${OTEL_EXPORTER_ENDPOINT:-http://localhost:4317}"
+      LOGGING_FILE_NAME: /app/logs/cinema-booking.log
+    volumes:
+      - cinema_logs:/app/logs
     depends_on:
       cinema-db:
         condition: service_healthy
@@ -297,7 +308,7 @@ services:
       args:
         MODULE_NAME: cinema-admin
     container_name: cinema-admin
-    profiles: [ "app", "all" ]
+    profiles: [ "manual" ]
     ports:
       - "8086:8086"
     env_file:
@@ -311,6 +322,9 @@ services:
       OTEL_JAVAAGENT_ENABLED: "${OTEL_ENABLED:-false}"
       OTEL_SERVICE_NAME: cinema-admin
       OTEL_EXPORTER_OTLP_ENDPOINT: "${OTEL_EXPORTER_ENDPOINT:-http://localhost:4317}"
+      LOGGING_FILE_NAME: /app/logs/cinema-admin.log
+    volumes:
+      - cinema_logs:/app/logs
     depends_on:
       cinema-db:
         condition: service_healthy
@@ -325,7 +339,7 @@ services:
       args:
         MODULE_NAME: cinema-notification
     container_name: cinema-notification
-    profiles: [ "app", "all" ]
+    profiles: [ "manual" ]
     env_file:
       - .env
     environment:
@@ -339,6 +353,9 @@ services:
       OTEL_JAVAAGENT_ENABLED: "${OTEL_ENABLED:-false}"
       OTEL_SERVICE_NAME: cinema-notification
       OTEL_EXPORTER_OTLP_ENDPOINT: "${OTEL_EXPORTER_ENDPOINT:-http://localhost:4317}"
+      LOGGING_FILE_NAME: /app/logs/cinema-notification.log
+    volumes:
+      - cinema_logs:/app/logs
     depends_on:
       - kafka
     networks:
@@ -347,6 +364,7 @@ services:
 
 volumes:
   cinema_data:
+  cinema_logs:
 
 networks:
   cinema-network:

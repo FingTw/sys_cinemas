@@ -1,8 +1,10 @@
 package com.example.cinema.admin.infrastructure.database.adapters;
 
 import com.example.cinema.admin.domain.entities.Movie;
+import com.example.cinema.admin.domain.entities.Genre;
 import com.example.cinema.admin.domain.repositories.MovieRepository;
 import com.example.cinema.admin.infrastructure.database.entities.MovieJpaEntity;
+import com.example.cinema.admin.infrastructure.database.entities.GenreJpaEntity;
 import com.example.cinema.admin.infrastructure.database.repositories.SpringDataMovieRepository;
 import org.springframework.stereotype.Component;
 
@@ -44,6 +46,9 @@ public class MovieRepositoryAdapter implements MovieRepository {
     }
 
     private Movie toDomain(MovieJpaEntity entity) {
+        java.util.Set<Genre> genres = entity.getGenres() != null ? entity.getGenres().stream()
+                .map(g -> Genre.builder().id(g.getId()).name(g.getName()).code(g.getCode()).build())
+                .collect(Collectors.toSet()) : new java.util.HashSet<>();
         return Movie.builder()
                 .id(entity.getId())
                 .title(entity.getTitle())
@@ -51,12 +56,15 @@ public class MovieRepositoryAdapter implements MovieRepository {
                 .durationMinutes(entity.getDurationMinutes())
                 .releaseDate(entity.getReleaseDate())
                 .posterUrl(entity.getPosterUrl())
-                .genre(entity.getGenre())
+                .genres(genres)
                 .status(entity.getStatus())
                 .build();
     }
 
     private MovieJpaEntity toEntity(Movie domain) {
+        java.util.Set<GenreJpaEntity> genres = domain.getGenres() != null ? domain.getGenres().stream()
+                .map(g -> GenreJpaEntity.builder().id(g.getId()).name(g.getName()).code(g.getCode()).build())
+                .collect(Collectors.toSet()) : new java.util.HashSet<>();
         return MovieJpaEntity.builder()
                 .id(domain.getId())
                 .title(domain.getTitle())
@@ -64,7 +72,7 @@ public class MovieRepositoryAdapter implements MovieRepository {
                 .durationMinutes(domain.getDurationMinutes())
                 .releaseDate(domain.getReleaseDate())
                 .posterUrl(domain.getPosterUrl())
-                .genre(domain.getGenre())
+                .genres(genres)
                 .status(domain.getStatus())
                 .build();
     }

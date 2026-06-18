@@ -32,15 +32,19 @@ public class RoomJpaEntity {
     @Column(columnDefinition = "integer default 15")
     private Integer gridCols = 15;
 
+    @Column(name = "cinema_id", nullable = false)
+    private String cinemaId;
+
     public RoomJpaEntity() {
     }
 
-    public RoomJpaEntity(String id, String name, String status, Integer gridRows, Integer gridCols) {
+    public RoomJpaEntity(String id, String name, String status, Integer gridRows, Integer gridCols, String cinemaId) {
         this.id = id;
         this.name = name;
         this.status = status;
         this.gridRows = gridRows;
         this.gridCols = gridCols;
+        this.cinemaId = cinemaId;
     }
 
     // Builder manual (để không làm gãy các code đang gọi .builder())
@@ -54,6 +58,7 @@ public class RoomJpaEntity {
         private String status = "ACTIVE";
         private Integer gridRows = 10;
         private Integer gridCols = 15;
+        private String cinemaId;
 
         public RoomJpaEntityBuilder id(String id) {
             this.id = id;
@@ -80,8 +85,13 @@ public class RoomJpaEntity {
             return this;
         }
 
+        public RoomJpaEntityBuilder cinemaId(String cinemaId) {
+            this.cinemaId = cinemaId;
+            return this;
+        }
+
         public RoomJpaEntity build() {
-            return new RoomJpaEntity(id, name, status, gridRows, gridCols);
+            return new RoomJpaEntity(id, name, status, gridRows, gridCols, cinemaId);
         }
     }
 }

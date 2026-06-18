@@ -20,7 +20,7 @@ spring:
     repair-on-migrate: true
     out-of-order: true
   config:
-    import: "optional:file:../.env[.properties]"
+    import: "optional:file:../../.env[.properties]"
   profiles:
     active: dev
 logging:

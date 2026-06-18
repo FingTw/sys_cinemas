@@ -12,4 +12,5 @@ public class CreateRoomRequest {
     private Integer gridRows;
     private Integer gridCols;
     private List<SeatDTO> seats;
+    private String cinemaId;
 }

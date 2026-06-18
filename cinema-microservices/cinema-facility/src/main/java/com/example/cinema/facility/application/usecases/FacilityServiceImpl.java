@@ -4,8 +4,12 @@ import com.example.cinema.facility.application.dto.RoomDTO;
 import com.example.cinema.facility.application.dto.SeatDTO;
 import com.example.cinema.facility.domain.entities.Room;
 import com.example.cinema.facility.domain.entities.Seat;
+import com.example.cinema.facility.domain.entities.Cinema;
+import com.example.cinema.facility.domain.entities.CinemaComplex;
 import com.example.cinema.facility.domain.repositories.RoomRepository;
 import com.example.cinema.facility.domain.repositories.SeatRepository;
+import com.example.cinema.facility.domain.repositories.CinemaRepository;
+import com.example.cinema.facility.domain.repositories.CinemaComplexRepository;
 import com.example.cinema.facility.exception.FacilityException;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
@@ -26,6 +30,8 @@ public class FacilityServiceImpl implements FacilityService {
 
     private final RoomRepository roomRepository;
     private final SeatRepository seatRepository;
+    private final CinemaRepository cinemaRepository;
+    private final CinemaComplexRepository cinemaComplexRepository;
     private final ModelMapper modelMapper;
 
     @Override
@@ -36,6 +42,7 @@ public class FacilityServiceImpl implements FacilityService {
             List<RoomDTO> result = roomRepository.findAll().stream().map(room -> {
                 RoomDTO dto = modelMapper.map(room, RoomDTO.class);
                 dto.setTotalSeats(seatRepository.countByRoomId(room.getId()));
+                enrichRoomDTO(dto);
                 return dto;
             }).collect(Collectors.toList());
             log.info("Tim thay {} phong chieu.", result.size());
@@ -55,11 +62,23 @@ public class FacilityServiceImpl implements FacilityService {
 
             RoomDTO dto = modelMapper.map(room, RoomDTO.class);
             dto.setTotalSeats(seatRepository.countByRoomId(room.getId()));
+            enrichRoomDTO(dto);
             return dto;
         } catch (FacilityException e) {
             throw e;
         } catch (Exception e) {
             throw FacilityException.databaseError("getRoomById(" + roomId + ")", e);
+        }
+    }
+
+    private void enrichRoomDTO(RoomDTO dto) {
+        if (dto.getCinemaId() != null) {
+            cinemaRepository.findById(dto.getCinemaId()).ifPresent(c -> {
+                dto.setCinemaName(c.getName());
+                cinemaComplexRepository.findById(c.getComplexId()).ifPresent(cc -> {
+                    dto.setCinemaComplexName(cc.getName());
+                });
+            });
         }
     }
 

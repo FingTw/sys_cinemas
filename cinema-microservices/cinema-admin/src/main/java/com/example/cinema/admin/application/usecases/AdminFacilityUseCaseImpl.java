@@ -7,6 +7,8 @@ import com.example.cinema.admin.domain.entities.Room;
 import com.example.cinema.admin.domain.entities.Seat;
 import com.example.cinema.admin.domain.repositories.RoomRepository;
 import com.example.cinema.admin.domain.repositories.SeatRepository;
+import com.example.cinema.admin.domain.repositories.CinemaRepository;
+import com.example.cinema.admin.domain.repositories.CinemaComplexRepository;
 import com.example.cinema.common.exception.ServerException;
 import com.example.cinema.common.exception.ClientException;
 import org.springframework.cache.annotation.CacheEvict;
@@ -26,6 +28,8 @@ public class AdminFacilityUseCaseImpl implements AdminFacilityUseCase {
 
     private final RoomRepository roomRepository;
     private final SeatRepository seatRepository;
+    private final CinemaRepository cinemaRepository;
+    private final CinemaComplexRepository cinemaComplexRepository;
     private final ModelMapper modelMapper;
 
     @Override
@@ -33,14 +37,15 @@ public class AdminFacilityUseCaseImpl implements AdminFacilityUseCase {
     @Caching(evict = {
             @CacheEvict(value = "rooms", allEntries = true)
     })
-    public RoomDTO createCustomRoom(String name, int gridRows, int gridCols, List<SeatDTO> seatDTOs) {
-        log.info("Admin creating custom room [{}]: {}x{}", name, gridRows, gridCols);
+    public RoomDTO createCustomRoom(String name, int gridRows, int gridCols, List<SeatDTO> seatDTOs, String cinemaId) {
+        log.info("Admin creating custom room [{}]: {}x{} for cinema [{}]", name, gridRows, gridCols, cinemaId);
         try {
             Room room = Room.builder()
                     .name(name)
                     .status("ACTIVE")
                     .gridRows(gridRows)
                     .gridCols(gridCols)
+                    .cinemaId(cinemaId)
                     .build();
             Room savedRoom = roomRepository.save(room);
 
@@ -63,9 +68,21 @@ public class AdminFacilityUseCaseImpl implements AdminFacilityUseCase {
 
             RoomDTO dto = modelMapper.map(savedRoom, RoomDTO.class);
             dto.setTotalSeats(seatsToSave.size());
+            enrichRoomDTO(dto);
             return dto;
         } catch (Exception e) {
             throw new ServerException("Failed to create room [" + name + "]: " + e.getMessage(), e);
+        }
+    }
+
+    private void enrichRoomDTO(RoomDTO dto) {
+        if (dto.getCinemaId() != null) {
+            cinemaRepository.findById(dto.getCinemaId()).ifPresent(c -> {
+                dto.setCinemaName(c.getName());
+                cinemaComplexRepository.findById(c.getComplexId()).ifPresent(cc -> {
+                    dto.setCinemaComplexName(cc.getName());
+                });
+            });
         }
     }
 
@@ -75,6 +92,7 @@ public class AdminFacilityUseCaseImpl implements AdminFacilityUseCase {
             return roomRepository.findAll().stream().map(room -> {
                 RoomDTO dto = modelMapper.map(room, RoomDTO.class);
                 dto.setTotalSeats(seatRepository.countByRoomId(room.getId()));
+                enrichRoomDTO(dto);
                 return dto;
             }).collect(Collectors.toList());
         } catch (Exception e) {

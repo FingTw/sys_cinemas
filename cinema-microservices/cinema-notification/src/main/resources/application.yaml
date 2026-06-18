@@ -4,6 +4,6 @@ spring:
   jackson:
     time-zone: ${APP_TIMEZONE}
   config:
-    import: "optional:file:../.env[.properties]"
+    import: "optional:file:../../.env[.properties]"
   profiles:
     active: dev

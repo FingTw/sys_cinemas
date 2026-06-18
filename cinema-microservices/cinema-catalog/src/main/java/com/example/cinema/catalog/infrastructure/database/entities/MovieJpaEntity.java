@@ -2,23 +2,27 @@ package com.example.cinema.catalog.infrastructure.database.entities;
 
 import jakarta.persistence.*;
 import java.time.LocalDate;
-
 import org.hibernate.annotations.SQLDelete;
 import org.hibernate.annotations.SQLRestriction;
-
 import lombok.Getter;
 import lombok.Setter;
+import lombok.NoArgsConstructor;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
 
 @Entity
 @Table(name = "movies", schema = "catalog", indexes = {
-    @Index(name = "idx_movie_status", columnList = "status"),
-    @Index(name = "idx_movie_genre", columnList = "genre")
+    @Index(name = "idx_movie_status", columnList = "status")
 })
 @SQLDelete(sql = "UPDATE catalog.movies SET is_deleted = true WHERE id=?")
 @SQLRestriction("is_deleted = false")
 @Getter
 @Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
 public class MovieJpaEntity {
+    @Builder.Default
     @jakarta.persistence.Column(name = "is_deleted")
     private boolean isDeleted = false;
 
@@ -38,81 +42,16 @@ public class MovieJpaEntity {
     private LocalDate releaseDate;
     
     private String posterUrl;
-    private String genre;
+
+    @ManyToMany(fetch = FetchType.LAZY)
+    @JoinTable(
+        name = "movie_genres",
+        schema = "catalog",
+        joinColumns = @JoinColumn(name = "movie_id"),
+        inverseJoinColumns = @JoinColumn(name = "genre_id")
+    )
+    @Builder.Default
+    private java.util.Set<GenreJpaEntity> genres = new java.util.HashSet<>();
+
     private String status;
-
-    public MovieJpaEntity() {
-    }
-
-    public MovieJpaEntity(String id, String title, String description, Integer durationMinutes, LocalDate releaseDate, String posterUrl, String genre, String status) {
-        this.id = id;
-        this.title = title;
-        this.description = description;
-        this.durationMinutes = durationMinutes;
-        this.releaseDate = releaseDate;
-        this.posterUrl = posterUrl;
-        this.genre = genre;
-        this.status = status;
-    }
-
-    // Builder manual
-    public static MovieJpaEntityBuilder builder() {
-        return new MovieJpaEntityBuilder();
-    }
-
-    public static class MovieJpaEntityBuilder {
-        private String id;
-        private String title;
-        private String description;
-        private Integer durationMinutes;
-        private LocalDate releaseDate;
-        private String posterUrl;
-        private String genre;
-        private String status;
-
-        public MovieJpaEntityBuilder id(String id) {
-            this.id = id;
-            return this;
-        }
-
-        public MovieJpaEntityBuilder title(String title) {
-            this.title = title;
-            return this;
-        }
-
-        public MovieJpaEntityBuilder description(String description) {
-            this.description = description;
-            return this;
-        }
-
-        public MovieJpaEntityBuilder durationMinutes(Integer durationMinutes) {
-            this.durationMinutes = durationMinutes;
-            return this;
-        }
-
-        public MovieJpaEntityBuilder releaseDate(LocalDate releaseDate) {
-            this.releaseDate = releaseDate;
-            return this;
-        }
-
-        public MovieJpaEntityBuilder posterUrl(String posterUrl) {
-            this.posterUrl = posterUrl;
-            return this;
-        }
-
-        public MovieJpaEntityBuilder genre(String genre) {
-            this.genre = genre;
-            return this;
-        }
-
-        public MovieJpaEntityBuilder status(String status) {
-            this.status = status;
-            return this;
-        }
-
-        public MovieJpaEntity build() {
-            return new MovieJpaEntity(id, title, description, durationMinutes, releaseDate, posterUrl, genre, status);
-        }
-    }
-
 }

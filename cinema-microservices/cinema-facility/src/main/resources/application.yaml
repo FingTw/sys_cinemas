@@ -19,7 +19,7 @@ spring:
     baseline-on-migrate: true
     repair-on-migrate: true
   config:
-    import: "optional:file:../.env[.properties]"
+    import: "optional:file:../../.env[.properties]"
   profiles:
     active: dev
 logging:

@@ -49,9 +49,7 @@ public class UserRepositoryAdapter implements UserRepository {
                 .email(entity.getEmail())
                 .roles(entity.getRoles().stream().map(this::toDomainRole).collect(Collectors.toSet()))
                 .permissions(entity.getPermissions().stream().map(this::toDomainPermission).collect(Collectors.toSet()))
-                .activeToken(entity.getActiveToken())
                 .isBlocked(entity.isBlocked())
-                .tokenVersion(entity.getTokenVersion())
                 .build();
     }
 
@@ -63,9 +61,7 @@ public class UserRepositoryAdapter implements UserRepository {
                 .email(domain.getEmail())
                 .roles(domain.getRoles().stream().map(this::toEntityRole).collect(Collectors.toSet()))
                 .permissions(domain.getPermissions().stream().map(this::toEntityPermission).collect(Collectors.toSet()))
-                .activeToken(domain.getActiveToken())
                 .isBlocked(domain.isBlocked())
-                .tokenVersion(domain.getTokenVersion())
                 .build();
     }
 

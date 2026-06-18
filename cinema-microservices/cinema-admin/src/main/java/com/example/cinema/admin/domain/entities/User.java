@@ -17,37 +17,25 @@ public class User {
     private String email;
     private Set<Role> roles = new HashSet<>();
     private Set<Permission> permissions = new HashSet<>();
-    private String activeToken;
     private boolean isBlocked;
-    private Long tokenVersion = 1L;
 
     @Builder
-    public User(String id, String username, String password, String email, Set<Role> roles, Set<Permission> permissions, String activeToken, boolean isBlocked, Long tokenVersion) {
+    public User(String id, String username, String password, String email, Set<Role> roles, Set<Permission> permissions, boolean isBlocked) {
         this.id = (id != null && !id.trim().isEmpty()) ? id : java.util.UUID.randomUUID().toString().replace("-", "");
         this.username = username;
         this.password = password;
         this.email = email;
         this.roles = roles != null ? roles : new HashSet<>();
         this.permissions = permissions != null ? permissions : new HashSet<>();
-        this.activeToken = activeToken;
         this.isBlocked = isBlocked;
-        this.tokenVersion = tokenVersion != null ? tokenVersion : 1L;
     }
 
     public void updateRoleAndPermissions(Set<Role> roles, Set<Permission> permissions) {
         this.roles = roles != null ? roles : new HashSet<>();
         this.permissions = permissions != null ? permissions : new HashSet<>();
-        this.tokenVersion++; // Invalidate existing tokens
     }
 
     public void updateStatus(boolean isBlocked) {
         this.isBlocked = isBlocked;
-        if (isBlocked) {
-            this.activeToken = null; // Kick user out if blocked
-        }
-    }
-
-    public void clearActiveToken() {
-        this.activeToken = null;
     }
 }

@@ -89,6 +89,9 @@ public class ShowtimeServiceImpl implements ShowtimeService {
         }
         if (room != null) {
             dto.setRoomName(room.getName());
+            dto.setCinemaId(room.getCinemaId());
+            dto.setCinemaName(room.getCinemaName());
+            dto.setCinemaComplexName(room.getCinemaComplexName());
         }
         return dto;
     }

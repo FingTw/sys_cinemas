@@ -19,7 +19,7 @@ spring:
     baseline-on-migrate: true
     repair-on-migrate: true
   config:
-    import: "optional:file:../.env[.properties]"
+    import: "optional:file:../../.env[.properties]"
   profiles:
     active: dev
   kafka:
@@ -46,6 +46,9 @@ camunda.bpm:
     active: true
   database:
     schema-update: true
+  generic-properties:
+    properties:
+      enforceHistoryTimeToLive: false
 
 resilience4j.circuitbreaker:
   instances:

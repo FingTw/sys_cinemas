@@ -38,6 +38,16 @@ public class MovieJpaEntity {
 
     private LocalDate releaseDate;
     private String posterUrl;
-    private String genre;
+
+    @ManyToMany(fetch = FetchType.LAZY)
+    @JoinTable(
+        name = "movie_genres",
+        schema = "catalog",
+        joinColumns = @JoinColumn(name = "movie_id"),
+        inverseJoinColumns = @JoinColumn(name = "genre_id")
+    )
+    @Builder.Default
+    private java.util.Set<GenreJpaEntity> genres = new java.util.HashSet<>();
+
     private String status;
 }

@@ -50,11 +50,11 @@ keycloak:
 app:
   services:
     iam:
-      url: ${APP_SERVICES_IAM_URL}
+      url: ${IAM_SERVICE_URL}
     facility:
-      url: ${APP_SERVICES_FACILITY_URL}
+      url: ${FACILITY_SERVICE_URL}
     scheduling:
-      url: ${APP_SERVICES_SCHEDULING_URL}
+      url: ${SCHEDULING_SERVICE_URL}
   security:
     jwt-secret: ${APP_SECURITY_JWT_SECRET}
     jwt-expiration-ms: ${JWT_EXPIRATION_MS}

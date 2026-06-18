@@ -3,11 +3,13 @@ package com.example.cinema.iam.application.usecases;
 import com.example.cinema.common.security.JwtTokenProvider;
 import com.example.cinema.common.security.ports.AuthGatewayPort;
 import com.example.cinema.common.security.ports.CryptoPort;
+import com.example.cinema.common.security.ports.SsoUserInfo;
 import com.example.cinema.iam.application.dto.AuthResponse;
 import com.example.cinema.iam.application.dto.RegisterRequest;
 import com.example.cinema.iam.application.ports.in.AuthServicePort;
 import com.example.cinema.iam.domain.entities.AuthToken;
 import com.example.cinema.iam.domain.entities.User;
+import com.example.cinema.iam.domain.repositories.SsoRoleMappingRepository;
 import com.example.cinema.iam.domain.repositories.RoleRepository;
 import com.example.cinema.iam.domain.repositories.TokenRepository;
 import com.example.cinema.iam.domain.repositories.UserRepository;
@@ -42,6 +44,7 @@ public class AuthServiceImpl implements AuthServicePort {
     private final CryptoPort cryptoPort;
     private final TokenRepository tokenRepositoryPort;
     private final RoleRepository roleRepository;
+    private final SsoRoleMappingRepository ssoRoleMappingRepository;
     private final AuthGatewayPort authGatewayPort;
     private final com.example.cinema.iam.domain.repositories.PasswordPolicyRepository passwordPolicyRepository;
 
@@ -69,21 +72,19 @@ public class AuthServiceImpl implements AuthServicePort {
             throw IamException.authenticationFailed("Mat khau khong hop le (loi ma hoa)");
         }
 
-        // 2. GOI KEYCLOAK DE KIEM TRA (SPI doc DB)
-        try {
-            boolean isKeycloakValid = authGatewayPort.verifyCredentials(username, password);
-            if (!isKeycloakValid) {
-                throw IamException.authenticationFailed("Xac thuc Keycloak that bai");
-            }
-        } catch (Exception e) {
-            log.error("[SECURITY] Keycloak authentication failed for user: [{}]. Error: {}", maskUsername(username), e.getMessage());
-            throw IamException.authenticationFailed("Tai khoan hoac mat khau khong chinh xac (Keycloak)");
+        // 2. Tim nguoi dung trong DB noi bo va kiem tra mat khau truc tiep (BCrypt)
+        // Luong nay khong qua Keycloak — nhanh hon, khong phu thuoc mang noi bo.
+        // Logic hash khi dang ky: encode(plainPassword + username.toLowerCase()) — giu nguyen o day.
+        User user = userRepositoryPort.findByUsername(username)
+                .orElseThrow(() -> IamException.authenticationFailed("Tai khoan hoac mat khau khong chinh xac"));
+
+        if (!passwordEncoder.matches(password + username.toLowerCase(), user.getPassword())) {
+            log.warn("[SECURITY] Sai mat khau cho tai khoan: [{}]", maskUsername(username));
+            // Tra ve cung thong bao loi de tranh username enumeration attack
+            throw IamException.authenticationFailed("Tai khoan hoac mat khau khong chinh xac");
         }
 
-        // 3. Tim nguoi dung trong DB noi bo de lay Role/Permission
-        User user = userRepositoryPort.findByUsername(username)
-                .orElseThrow(() -> IamException.authenticationFailed("Tai khoan da xac thuc nhung khong tim thay thong tin phan quyen"));
-
+        // 3. Kiem tra trang thai tai khoan
         if (user.isBlocked()) {
             throw IamException.authenticationFailed("Tai khoan da bi khoa");
         }
@@ -101,25 +102,28 @@ public class AuthServiceImpl implements AuthServicePort {
                 .map(com.example.cinema.iam.domain.entities.Permission::getName)
                 .collect(Collectors.toSet());
 
-        String accessToken = jwtTokenProvider.generateToken(user.getUsername(), roleNames, effectivePermissions,
-                user.getId(), user.getTokenVersion());
+        String accessToken = jwtTokenProvider.generateToken(user.getUsername(), user.getId());
 
-        // 6. Blacklist token cũ nếu đang đăng nhập
-        if (user.getActiveToken() != null && !user.getActiveToken().isEmpty()) {
-            blacklistTokenSafely(user.getActiveToken());
+        // 6. Blacklist token cũ nếu đang đăng nhập (lấy từ Redis thay vì DB)
+        String prevToken = redisTemplate.opsForValue().get("valid_token:" + user.getId());
+        if (prevToken != null && !prevToken.isEmpty()) {
+            blacklistTokenSafely(prevToken);
         }
 
-        // 7. Cập nhật phiên làm việc mới
-        user.assignToken(accessToken);
-        userRepositoryPort.save(user);
-
-        // Lưu Cache hỗ trợ Gateway validation nhanh
+        // 7. Cập nhật phiên làm việc mới - Chỉ lưu Cache hỗ trợ Gateway validation nhanh, KHÔNG ghi DB
         redisTemplate.opsForValue().set("valid_token:" + user.getId(), accessToken);
-        String authContext = String.join(",", roleNames) + "|" + String.join(",", effectivePermissions);
+        String authContext = String.join(",", roleNames) + "|" + String.join(",", effectivePermissions) + "|" + (user.getCinemaId() != null ? user.getCinemaId() : "");
         redisTemplate.opsForValue().set("user_auth:" + user.getId(), authContext);
 
         log.info("[AUTH] User [{}] logged in successfully", maskUsername(username));
-        return new AuthResponse(accessToken, refreshToken);
+        return AuthResponse.builder()
+                .token(accessToken)
+                .refreshToken(refreshToken)
+                .username(user.getUsername())
+                .roles(String.join(",", roleNames))
+                .permissions(String.join(",", effectivePermissions))
+                .userId(user.getId())
+                .build();
     }
 
     @Override
@@ -205,14 +209,24 @@ public class AuthServiceImpl implements AuthServicePort {
                 .map(com.example.cinema.iam.domain.entities.Permission::getName)
                 .collect(Collectors.toSet());
 
-        String newAccessToken = jwtTokenProvider.generateToken(user.getUsername(), roleNames, effectivePermissions,
-                user.getId(), user.getTokenVersion());
+        String newAccessToken = jwtTokenProvider.generateToken(user.getUsername(), user.getId());
 
-        user.assignToken(newAccessToken);
-        userRepositoryPort.save(user);
+        // Không lưu access_token vào DB nữa, chỉ cập nhật Cache Redis
         redisTemplate.opsForValue().set("valid_token:" + user.getId(), newAccessToken);
+        String authContext = String.join(",", roleNames) + "|" + String.join(",", effectivePermissions) + "|" + (user.getCinemaId() != null ? user.getCinemaId() : "");
+        redisTemplate.opsForValue().set("user_auth:" + user.getId(), authContext);
 
-        return new AuthResponse(newAccessToken, newRefreshToken);
+        Set<String> refreshRoleNames = user.getRoles().stream()
+                .map(com.example.cinema.iam.domain.entities.Role::getName)
+                .collect(Collectors.toSet());
+        return AuthResponse.builder()
+                .token(newAccessToken)
+                .refreshToken(newRefreshToken)
+                .username(user.getUsername())
+                .roles(String.join(",", refreshRoleNames))
+                .permissions(String.join(",", effectivePermissions))
+                .userId(user.getId())
+                .build();
     }
 
     @Override
@@ -229,20 +243,37 @@ public class AuthServiceImpl implements AuthServicePort {
             // 2. Blacklist Access Token
             blacklistTokenSafely(token);
 
-            // 3. Clear Active Token in DB
-            userRepositoryPort.findByUsername(username).ifPresent(user -> {
-                if (token.equals(user.getActiveToken())) {
-                    user.revokeToken();
-                    userRepositoryPort.save(user);
-                }
-            });
-
-            // 4. Revoke All Refresh Tokens in DB (Sessions)
+            // 3. Revoke All Refresh Tokens in DB (Sessions)
             tokenRepositoryPort.revokeAllByUserId(userId);
 
-            log.info("[AUTH] User [{}] logged out and sessions revoked", maskUsername(username));
+            log.info("[AUTH] User [{}] logged out locally", maskUsername(username));
         } catch (Exception e) {
-            log.warn("[AUTH] Logout partially failed: {}", e.getMessage());
+            log.warn("[AUTH] Local logout partially failed: {}", e.getMessage());
+        }
+    }
+
+    @Override
+    public void logoutAll(String token) {
+        try {
+            String userId = jwtTokenProvider.getUserIdFromToken(token);
+
+            // 1. Perform local logout
+            logout(token);
+
+            // 2. Backchannel logout from Keycloak
+            String kcRefresh = redisTemplate.opsForValue().get("kc_refresh:" + userId);
+            if (kcRefresh != null) {
+                try {
+                    authGatewayPort.logoutFromKeycloak(kcRefresh);
+                } catch (Exception e) {
+                    log.warn("[SSO] Keycloak backchannel logout failed (ignored): {}", e.getMessage());
+                }
+                redisTemplate.delete("kc_refresh:" + userId);
+            }
+
+            log.info("[AUTH] User [{}] logged out from Keycloak globally", userId);
+        } catch (Exception e) {
+            log.warn("[AUTH] Global logout partially failed: {}", e.getMessage());
         }
     }
 
@@ -260,7 +291,172 @@ public class AuthServiceImpl implements AuthServicePort {
         return userRepositoryPort.existsByEmail(email);
     }
 
+    // --- SSO Use Case ---
+
+    /**
+     * Dang nhap bang SSO Keycloak Standalone.
+     * Nhan truc tiep Keycloak JWT va Refresh Token tu Frontend, validate offline,
+     * sau do dung JIT provisioning de lien ket/tao moi tai khoan trong DB
+     * va phat Local JWT.
+     */
+    @Override
+    @Transactional
+    public AuthResponse loginWithSso(String keycloakJwt, String keycloakRefreshToken, String ipAddress, String userAgent) {
+        log.info("[SSO] Bat dau xu ly SSO login");
+
+        // Validate input
+        if (keycloakJwt == null || keycloakJwt.trim().isEmpty()) {
+            throw IamException.authenticationFailed("Keycloak token khong duoc de trong");
+        }
+
+        // Buoc 1: Validate offline Keycloak JWT bang JWKS
+        SsoUserInfo ssoUser;
+        try {
+            ssoUser = authGatewayPort.validateKeycloakToken(keycloakJwt);
+        } catch (Exception e) {
+            log.error("[SSO] Validate Keycloak JWT offline that bai. Loi: {}", e.getMessage());
+            throw IamException.authenticationFailed("Xac thuc SSO that bai. Token khong hop le hoac da het han.");
+        }
+
+        log.info("[SSO] Keycloak JWT xac thuc thanh cong cho user: [{}], sub: [{}].",
+                maskUsername(ssoUser.username()), ssoUser.sub());
+
+        // Buoc 2: Tim tai khoan tuong ung theo ssoSubject
+        User user = userRepositoryPort.findBySsoSubject(ssoUser.sub())
+                .orElseGet(() -> {
+                    // Neu khong tim thay theo ssoSubject, kiem tra theo username
+                    return userRepositoryPort.findByUsername(ssoUser.username())
+                            .map(existingUser -> {
+                                if (existingUser.getSsoSubject() == null) {
+                                    log.info("[SSO] Lien ket tai khoan local [{}] voi Keycloak sub [{}]", 
+                                            existingUser.getUsername(), ssoUser.sub());
+                                    
+                                    // Update ssoSubject va set authProvider = keycloak (Giu nguyen roles local dang co trong DB)
+                                    User updatedUser = User.builder()
+                                            .id(existingUser.getId())
+                                            .username(existingUser.getUsername())
+                                            .password(existingUser.getPassword())
+                                            .email(existingUser.getEmail())
+                                            .roles(existingUser.getRoles())
+                                            .permissions(existingUser.getPermissions())
+                                            .isBlocked(existingUser.isBlocked())
+                                            .authProvider("keycloak")
+                                            .ssoSubject(ssoUser.sub())
+                                            .build();
+                                    userRepositoryPort.save(updatedUser);
+                                    return updatedUser;
+                                } else {
+                                    // Username conflict: trung username nhung khac sso_subject
+                                    String uniqueUsername = resolveUniqueUsername(ssoUser.username());
+                                    return createSsoUser(ssoUser, uniqueUsername);
+                                }
+                            })
+                            .orElseGet(() -> createSsoUser(ssoUser, ssoUser.username()));
+                });
+
+        // Buoc 3: Kiem tra trang thai tai khoan
+        if (user.isBlocked()) {
+            log.warn("[SSO] Tai khoan [{}] dang bi khoa, tu choi dang nhap SSO.", maskUsername(user.getUsername()));
+            throw IamException.authenticationFailed("Tai khoan da bi khoa");
+        }
+
+        // Buoc 4: Luu Keycloak refresh token vao Redis
+        if (keycloakRefreshToken != null && !keycloakRefreshToken.trim().isEmpty()) {
+            redisTemplate.opsForValue().set("kc_refresh:" + user.getId(),
+                    keycloakRefreshToken, 30, TimeUnit.DAYS);
+        }
+
+        // Buoc 5: Phat Local JWT (y hethuong)
+        String refreshToken = issueTokens(user, ipAddress, userAgent);
+
+        Set<String> roleNames = user.getRoles().stream()
+                .map(com.example.cinema.iam.domain.entities.Role::getName)
+                .collect(Collectors.toSet());
+
+        Set<String> effectivePermissions = user.getRoles().stream()
+                .flatMap(role -> role.getPermissions().stream())
+                .map(com.example.cinema.iam.domain.entities.Permission::getName)
+                .collect(Collectors.toSet());
+
+        String accessToken = jwtTokenProvider.generateToken(user.getUsername(), user.getId());
+
+        String prevToken = redisTemplate.opsForValue().get("valid_token:" + user.getId());
+        if (prevToken != null && !prevToken.isEmpty()) {
+            blacklistTokenSafely(prevToken);
+        }
+
+        // Không lưu access_token vào DB nữa, chỉ cập nhật Cache Redis
+
+        redisTemplate.opsForValue().set("valid_token:" + user.getId(), accessToken);
+        String authContext = String.join(",", roleNames) + "|" + String.join(",", effectivePermissions) + "|" + (user.getCinemaId() != null ? user.getCinemaId() : "");
+        redisTemplate.opsForValue().set("user_auth:" + user.getId(), authContext);
+
+        log.info("[SSO] User [{}] dang nhap SSO thanh cong.", maskUsername(user.getUsername()));
+        return AuthResponse.builder()
+                .token(accessToken)
+                .refreshToken(refreshToken)
+                .username(user.getUsername())
+                .roles(String.join(",", roleNames))
+                .permissions(String.join(",", effectivePermissions))
+                .userId(user.getId())
+                .build();
+    }
+
     // --- Internal Helpers ---
+
+    private String resolveUniqueUsername(String baseUsername) {
+        String username = baseUsername;
+        int counter = 1;
+        while (userRepositoryPort.existsByUsername(username)) {
+            username = baseUsername + counter;
+            counter++;
+        }
+        return username;
+    }
+
+    private User createSsoUser(SsoUserInfo ssoUser, String username) {
+        if (ssoUser.email() != null && !ssoUser.email().trim().isEmpty()) {
+            if (userRepositoryPort.existsByEmail(ssoUser.email())) {
+                throw IamException.registrationFailed("Email da ton tai trong he thong", null);
+            }
+        }
+
+        Set<com.example.cinema.iam.domain.entities.Role> mappedRoles = mapKeycloakRolesToDbRoles(ssoUser.roles());
+
+        User newUser = User.builder()
+                .username(username)
+                .email(ssoUser.email())
+                .password(null) // SSO user khong co password
+                .authProvider("keycloak")
+                .ssoSubject(ssoUser.sub())
+                .roles(mappedRoles)
+                .build();
+
+        userRepositoryPort.save(newUser);
+        log.info("[SSO] Created new JIT provisioned user: [{}] with roles: {}", username, 
+                mappedRoles.stream().map(com.example.cinema.iam.domain.entities.Role::getName).collect(Collectors.joining(",")));
+        return newUser;
+    }
+
+    private Set<com.example.cinema.iam.domain.entities.Role> mapKeycloakRolesToDbRoles(Set<String> ssoRoles) {
+        // 1. Quét map Keycloak Roles -> SsoRoleMapping -> Local Roles
+        Set<com.example.cinema.iam.domain.entities.Role> mappedRoles = ssoRoles.stream()
+                .map(roleName -> ssoRoleMappingRepository.findBySsoRoleName(roleName.toLowerCase()))
+                .filter(java.util.Optional::isPresent)
+                .map(mapping -> mapping.get().getLocalRole())
+                .collect(Collectors.toSet());
+
+        // 2. Fallback -> Nếu không map được role nào, cấp cho User role mặc định
+        if (mappedRoles.isEmpty()) {
+            log.warn("[SSO] No mapped roles found for SSO roles {}. Falling back to default USER role.", ssoRoles);
+            com.example.cinema.iam.domain.entities.Role userRole = roleRepository.findByName("USER")
+                    .orElseThrow(() -> IamException.databaseError("sso.role_lookup", 
+                            new RuntimeException("Default USER role missing")));
+            return Collections.singleton(userRole);
+        }
+
+        return mappedRoles;
+    }
 
     public String issueTokens(User user, String ipAddress, String userAgent) {
         String tokenJti = UUID.randomUUID().toString();

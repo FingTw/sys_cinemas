@@ -127,6 +127,7 @@ public class DynamicCorsConfiguration {
                     }
                     
                     response.getHeaders().add("Access-Control-Max-Age", "3600");
+                    response.getHeaders().add("Access-Control-Expose-Headers", "X-Request-Id, X-XSRF-TOKEN");
                     response.setStatusCode(HttpStatus.OK);
                     return Mono.empty();
                 }

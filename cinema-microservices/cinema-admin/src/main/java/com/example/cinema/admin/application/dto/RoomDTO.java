@@ -13,4 +13,7 @@ public class RoomDTO {
     private Integer gridRows;
     private Integer gridCols;
     private Integer totalSeats;
+    private String cinemaId;
+    private String cinemaName;
+    private String cinemaComplexName;
 }

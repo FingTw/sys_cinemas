@@ -27,6 +27,11 @@ public class PostgresUserAdapter implements UserRepository {
     }
 
     @Override
+    public Optional<User> findBySsoSubject(String ssoSubject) {
+        return springDataUserRepository.findBySsoSubject(ssoSubject).map(this::mapToDomain);
+    }
+
+    @Override
     public Optional<User> findById(String id) {
         return springDataUserRepository.findById(id).map(this::mapToDomain);
     }
@@ -86,8 +91,8 @@ public class PostgresUserAdapter implements UserRepository {
                     .build())
                 .collect(Collectors.toSet()))
             .isBlocked(entity.isBlocked())
-            .activeToken(entity.getActiveToken())
-            .tokenVersion(entity.getTokenVersion())
+            .authProvider(entity.getAuthProvider())
+            .ssoSubject(entity.getSsoSubject())
             .build();
     }
 
@@ -124,24 +129,10 @@ public class PostgresUserAdapter implements UserRepository {
             })
             .collect(Collectors.toSet()));
         entity.setBlocked(user.isBlocked());
-        entity.setActiveToken(user.getActiveToken());
-        entity.setTokenVersion(user.getTokenVersion());
+        entity.setAuthProvider(user.getAuthProvider());
+        entity.setSsoSubject(user.getSsoSubject());
         return entity;
     }
 
-    @Override
-    public Long findTokenVersionById(String userId) {
-        return springDataUserRepository.findTokenVersionById(userId);
-    }
 
-    @Override
-    public Long incrementTokenVersion(String userId) {
-        UserJpaEntity user = springDataUserRepository.findById(userId)
-            .orElseThrow(() -> new RuntimeException("User not found"));
-            
-        Long currentVersion = user.getTokenVersion() != null ? user.getTokenVersion() : 0L;
-        user.setTokenVersion(currentVersion + 1);
-        springDataUserRepository.save(user);
-        return user.getTokenVersion();
-    }
 }

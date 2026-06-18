@@ -17,21 +17,23 @@ public class User {
     private String email;
     private Set<Role> roles = new HashSet<>();
     private Set<Permission> permissions = new HashSet<>();
-    private String activeToken;
     private boolean isBlocked;
-    private Long tokenVersion = 1L;
+    private String authProvider = "local";  // "local" | "keycloak"
+    private String ssoSubject;              // Keycloak sub UUID (bất biến)
+    private String cinemaId;                // ID của rạp phim mà user (nhân viên) làm việc
 
     @Builder
-    public User(String id, String username, String password, String email, Set<Role> roles, Set<Permission> permissions, String activeToken, boolean isBlocked, Long tokenVersion) {
+    public User(String id, String username, String password, String email, Set<Role> roles, Set<Permission> permissions, boolean isBlocked, String authProvider, String ssoSubject, String cinemaId) {
         this.id = (id != null && !id.trim().isEmpty()) ? id : java.util.UUID.randomUUID().toString().replace("-", "");
         this.username = username;
         this.password = password;
         this.email = email;
         this.roles = roles != null ? roles : new HashSet<>();
         this.permissions = permissions != null ? permissions : new HashSet<>();
-        this.activeToken = activeToken;
         this.isBlocked = isBlocked;
-        this.tokenVersion = tokenVersion != null ? tokenVersion : 1L;
+        this.authProvider = (authProvider != null && !authProvider.trim().isEmpty()) ? authProvider : "local";
+        this.ssoSubject = ssoSubject;
+        this.cinemaId = cinemaId;
     }
 
     public void updateEmail(String newEmail) {
@@ -41,11 +43,13 @@ public class User {
         this.email = newEmail;
     }
 
-    public void assignToken(String token) {
-        this.activeToken = token;
+
+
+    public void block() {
+        this.isBlocked = true;
     }
 
-    public void revokeToken() {
-        this.activeToken = null;
+    public void unblock() {
+        this.isBlocked = false;
     }
 }

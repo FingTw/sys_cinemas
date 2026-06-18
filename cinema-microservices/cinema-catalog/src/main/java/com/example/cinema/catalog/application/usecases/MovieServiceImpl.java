@@ -1,7 +1,9 @@
 package com.example.cinema.catalog.application.usecases;
 
 import com.example.cinema.catalog.application.dto.MovieDTO;
+import com.example.cinema.catalog.application.dto.GenreDTO;
 import com.example.cinema.catalog.domain.entities.Movie;
+import com.example.cinema.catalog.domain.entities.Genre;
 import com.example.cinema.catalog.domain.repositories.MovieRepository;
 import com.example.cinema.catalog.exception.CatalogException;
 import org.springframework.cache.annotation.CacheEvict;
@@ -31,7 +33,7 @@ public class MovieServiceImpl implements MovieService {
             List<Movie> movies = movieRepository.findAll();
             log.info("Da tim thay {} bo phim.", movies.size());
             return movies.stream()
-                    .map(movie -> modelMapper.map(movie, MovieDTO.class))
+                    .map(this::convertToDTO)
                     .collect(Collectors.toList());
         } catch (Exception e) {
             throw CatalogException.databaseError("getAllMovies", e);
@@ -45,11 +47,24 @@ public class MovieServiceImpl implements MovieService {
         try {
             Movie movie = movieRepository.findById(id)
                     .orElseThrow(() -> CatalogException.movieNotFound(id));
-            return modelMapper.map(movie, MovieDTO.class);
+            return convertToDTO(movie);
         } catch (CatalogException e) {
             throw e;
         } catch (Exception e) {
             throw CatalogException.databaseError("getMovieById(" + id + ")", e);
         }
+    }
+
+    private MovieDTO convertToDTO(Movie movie) {
+        MovieDTO dto = modelMapper.map(movie, MovieDTO.class);
+        if (movie.getGenres() != null) {
+            dto.setGenres(movie.getGenres().stream()
+                    .map(g -> modelMapper.map(g, GenreDTO.class))
+                    .collect(Collectors.toList()));
+            dto.setGenreIds(movie.getGenres().stream()
+                    .map(Genre::getId)
+                    .collect(Collectors.toList()));
+        }
+        return dto;
     }
 }

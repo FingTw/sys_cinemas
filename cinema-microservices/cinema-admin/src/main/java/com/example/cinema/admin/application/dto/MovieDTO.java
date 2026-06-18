@@ -14,6 +14,7 @@ public class MovieDTO {
     private Integer durationMinutes;
     private LocalDate releaseDate;
     private String posterUrl;
-    private String genre;
+    private java.util.List<String> genreIds;
+    private java.util.List<GenreDTO> genres;
     private String status;
 }

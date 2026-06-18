@@ -66,7 +66,11 @@ public class SecurityConfig {
                 // 3. Phan quyen Endpoint
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/v1/auth/login", "/api/v1/auth/register", "/api/v1/auth/public-key",
-                                "/api/v1/auth/refresh-token", "/api/v1/auth/password-policy")
+                                "/api/v1/auth/refresh-token", "/api/v1/auth/password-policy",
+                                "/api/v1/auth/sso/token",          // Keycloak Standalone SSO Token
+                                "/api/v1/auth/check-username",     // Kiem tra ton tai username (dang ky)
+                                "/api/v1/auth/check-email"         // Kiem tra ton tai email (dang ky)
+                        )
                         .permitAll()
                         .requestMatchers("/api/v1/movies/**", "/api/v1/featured-movies/**").permitAll() // Xem danh sach phim cong khai
                         .requestMatchers("/api/v1/showtimes/**").permitAll() // Xem suat chieu cong khai

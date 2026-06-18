@@ -27,6 +27,9 @@ public class GatewayAggregationController {
     @Value("${CATALOG_SERVICE_URL}")
     private String catalogServiceUrl;
 
+    @Value("${APP_SECURITY_INTERNAL_API_KEY:my-secret-dev-api-key}")
+    private String internalApiKey;
+
     public GatewayAggregationController(WebClient.Builder webClientBuilder,
                                         ReactiveStringRedisTemplate redisTemplate,
                                         ObjectMapper objectMapper) {
@@ -57,6 +60,7 @@ public class GatewayAggregationController {
     private Mono<HomeOverviewDto> fetchFromDownstreamAndCache() {
         Mono<List<Map>> moviesMono = webClient.get()
                 .uri(catalogServiceUrl + "/api/v1/movies")
+                .header("X-API-Key", internalApiKey)
                 .retrieve()
                 .bodyToFlux(Map.class)
                 .collectList()
@@ -64,6 +68,7 @@ public class GatewayAggregationController {
 
         Mono<List<Map>> featuredMoviesMono = webClient.get()
                 .uri(catalogServiceUrl + "/api/v1/featured-movies")
+                .header("X-API-Key", internalApiKey)
                 .retrieve()
                 .bodyToFlux(Map.class)
                 .collectList()
@@ -99,10 +104,10 @@ public class GatewayAggregationController {
                     return response;
                 })
                 .flatMap(dto -> {
-                    // 2. Lưu vào Cache với TTL 5 phút
+                    // 2. Lưu vào Cache với TTL 5 giây
                     try {
                         String json = objectMapper.writeValueAsString(dto);
-                        return redisTemplate.opsForValue().set(CACHE_KEY, json, Duration.ofMinutes(5))
+                        return redisTemplate.opsForValue().set(CACHE_KEY, json, Duration.ofSeconds(5))
                                 .thenReturn(dto);
                     } catch (JsonProcessingException e) {
                         return Mono.just(dto);

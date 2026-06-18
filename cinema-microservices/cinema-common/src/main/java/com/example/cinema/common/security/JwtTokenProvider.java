@@ -34,18 +34,10 @@ public class JwtTokenProvider {
         return Keys.hmacShaKeyFor(jwtSecret.getBytes());
     }
 
-    public String generateToken(String username, Collection<String> roles,
-                                Collection<String> permissions, String userId, Long tokenVersion) {
-        String rolesString = roles.stream()
-                .map(role -> "ROLE_" + role)
-                .collect(Collectors.joining(","));
-
+    public String generateToken(String username, String userId) {
         return Jwts.builder()
                 .subject(username)
-                .claim("roles", rolesString)
-                .claim("permissions", String.join(",", permissions))
                 .claim("userId", userId)
-                .claim("tokenVersion", tokenVersion)
                 .issuedAt(new Date())
                 .expiration(new Date(System.currentTimeMillis() + jwtExpirationMs))
                 .signWith(getSigningKey())
@@ -84,23 +76,13 @@ public class JwtTokenProvider {
         return parseClaims(token).getSubject();
     }
 
-    public String getRolesFromToken(String token) {
-        return parseClaims(token).get("roles", String.class);
-    }
-
-    public String getPermissionsFromToken(String token) {
-        Object permissions = parseClaims(token).get("permissions");
-        return permissions instanceof String s ? s : (permissions != null ? permissions.toString() : null);
-    }
+    // Removed getRolesFromToken and getPermissionsFromToken
 
     public String getUserIdFromToken(String token) {
         return parseClaims(token).get("userId", String.class);
     }
 
-    public Long getVersionFromToken(String token) {
-        Object version = parseClaims(token).get("tokenVersion");
-        return version instanceof Number n ? n.longValue() : null;
-    }
+
 
     public Date getExpirationDateFromToken(String token) {
         return parseClaims(token).getExpiration();

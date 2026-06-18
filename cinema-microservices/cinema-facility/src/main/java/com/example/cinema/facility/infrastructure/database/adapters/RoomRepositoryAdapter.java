@@ -50,6 +50,7 @@ public class RoomRepositoryAdapter implements RoomRepository {
                 .status(entity.getStatus())
                 .gridRows(entity.getGridRows())
                 .gridCols(entity.getGridCols())
+                .cinemaId(entity.getCinemaId())
                 .build();
     }
 
@@ -60,6 +61,7 @@ public class RoomRepositoryAdapter implements RoomRepository {
                 .status(domain.getStatus())
                 .gridRows(domain.getGridRows())
                 .gridCols(domain.getGridCols())
+                .cinemaId(domain.getCinemaId())
                 .build();
     }
 }

@@ -25,11 +25,13 @@ public class AuthController {
     private final AuthServicePort authService;
     private final CryptoPort cryptoPort;
     private final PasswordPolicyUseCase passwordPolicyUseCase;
+    private final com.example.cinema.common.security.JwtTokenProvider jwtTokenProvider;
 
-    public AuthController(AuthServicePort authService, CryptoPort cryptoPort, PasswordPolicyUseCase passwordPolicyUseCase) {
+    public AuthController(AuthServicePort authService, CryptoPort cryptoPort, PasswordPolicyUseCase passwordPolicyUseCase, com.example.cinema.common.security.JwtTokenProvider jwtTokenProvider) {
         this.authService = authService;
         this.cryptoPort = cryptoPort;
         this.passwordPolicyUseCase = passwordPolicyUseCase;
+        this.jwtTokenProvider = jwtTokenProvider;
     }
 
     @GetMapping("/password-policy")
@@ -47,6 +49,31 @@ public class AuthController {
         String ipAddress = getClientIpAddress(httpRequest);
         String userAgent = httpRequest.getHeader("User-Agent");
         AuthResponse response = authService.login(request.getUsername(), request.getPassword(), ipAddress, userAgent);
+        return ResponseEntity.ok(response);
+    }
+
+    /**
+     * [SSO] Nhan Keycloak Access/ID Token va Refresh Token truc tiep tu Frontend.
+     * Iam se validate token offline bang JWKS, thuc hien JIT provisioning/account linking,
+     * va tra ve Local JWT.
+     *
+     * <p>Body yeu cau (JSON):
+     * <pre>
+     * {
+     *   "keycloakToken": "eyJhbGciOi...",
+     *   "keycloakRefreshToken": "eyJhbGciOi..."
+     * }
+     * </pre>
+     */
+    @PostMapping("/sso/token")
+    public ResponseEntity<AuthResponse> ssoToken(
+            @RequestBody Map<String, String> request,
+            jakarta.servlet.http.HttpServletRequest httpRequest) {
+        String keycloakToken = request.get("keycloakToken");
+        String keycloakRefreshToken = request.get("keycloakRefreshToken");
+        String ipAddress = getClientIpAddress(httpRequest);
+        String userAgent = httpRequest.getHeader("User-Agent");
+        AuthResponse response = authService.loginWithSso(keycloakToken, keycloakRefreshToken, ipAddress, userAgent);
         return ResponseEntity.ok(response);
     }
 
@@ -83,15 +110,43 @@ public class AuthController {
     }
 
     @GetMapping("/me")
-    public ResponseEntity<?> getCurrentUser(Authentication authentication) {
+    public ResponseEntity<?> getCurrentUser(Authentication authentication, HttpServletRequest request) {
         if (authentication == null || !authentication.isAuthenticated()) {
             return ResponseEntity.status(401).body(Map.of("error", "Not authenticated"));
         }
+        
+        String rolesString = "";
+        String permissionsString = "";
+        
+        if (authentication.getAuthorities() != null) {
+            rolesString = authentication.getAuthorities().stream()
+                    .map(org.springframework.security.core.GrantedAuthority::getAuthority)
+                    .filter(role -> role.startsWith("ROLE_"))
+                    .map(role -> role.substring(5))
+                    .collect(Collectors.joining(","));
+                    
+            permissionsString = authentication.getAuthorities().stream()
+                    .map(org.springframework.security.core.GrantedAuthority::getAuthority)
+                    .filter(role -> !role.startsWith("ROLE_"))
+                    .collect(Collectors.joining(","));
+        }
+                
+        String userId = "";
+        String authHeader = request.getHeader("Authorization");
+        if (authHeader != null && authHeader.startsWith("Bearer ")) {
+            String token = authHeader.substring(7);
+            try {
+                userId = jwtTokenProvider.getUserIdFromToken(token);
+            } catch (Exception e) {
+                // Ignore
+            }
+        }
+
         return ResponseEntity.ok(Map.of(
             "username", authentication.getName(),
-            "roles", authentication.getAuthorities().stream()
-                .map(org.springframework.security.core.GrantedAuthority::getAuthority)
-                .collect(Collectors.toList())
+            "roles", rolesString,
+            "permissions", permissionsString,
+            "userId", userId
         ));
     }
 
@@ -114,11 +169,17 @@ public class AuthController {
     }
 
     @PostMapping("/logout")
-    public ResponseEntity<?> logout(HttpServletRequest request) {
+    public ResponseEntity<?> logout(
+            HttpServletRequest request,
+            @RequestParam(value = "global", required = false, defaultValue = "false") boolean global) {
         String authHeader = request.getHeader("Authorization");
         if (authHeader != null && authHeader.startsWith("Bearer ")) {
             String token = authHeader.substring(7);
-            authService.logout(token);
+            if (global) {
+                authService.logoutAll(token);
+            } else {
+                authService.logout(token);
+            }
         }
         return ResponseEntity.ok(Map.of("message", "Logged out successfully"));
     }

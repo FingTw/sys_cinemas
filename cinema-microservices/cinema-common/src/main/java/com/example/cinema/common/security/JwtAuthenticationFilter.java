@@ -84,22 +84,47 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 throw AuthException.sessionInvalidated(userId);
             }
 
-            // Step 4: Trích xuất authorities và set vào SecurityContext
-            String rolesStr = jwtTokenProvider.getRolesFromToken(jwt);
-            String permissionsStr = jwtTokenProvider.getPermissionsFromToken(jwt);
+            // Step 4: Trích xuất authorities từ Redis thay vì JWT
             String username = jwtTokenProvider.getUsernameFromToken(jwt);
+            String authContext = redisTemplate.opsForValue().get("user_auth:" + userId);
+            
+            String rolesStr = "";
+            String permissionsStr = "";
+            String cinemaId = null;
+            
+            if (StringUtils.hasText(authContext)) {
+                String[] parts = authContext.split("\\|");
+                if (parts.length > 0) rolesStr = parts[0];
+                if (parts.length > 1) permissionsStr = parts[1];
+                if (parts.length > 2) cinemaId = parts[2];
+            }
 
             List<SimpleGrantedAuthority> authorities = Stream.concat(
-                    Optional.ofNullable(rolesStr).stream().flatMap(s -> Arrays.stream(s.split(","))),
-                    Optional.ofNullable(permissionsStr).stream().flatMap(s -> Arrays.stream(s.split(",")))
+                    Optional.ofNullable(rolesStr).filter(StringUtils::hasText).stream().flatMap(s -> Arrays.stream(s.split(",")))
+                            .map(r -> r.startsWith("ROLE_") ? r : "ROLE_" + r),
+                    Optional.ofNullable(permissionsStr).filter(StringUtils::hasText).stream().flatMap(s -> Arrays.stream(s.split(",")))
             )
                     .filter(StringUtils::hasText)
                     .distinct()
                     .map(SimpleGrantedAuthority::new)
                     .collect(Collectors.toList());
 
-            SecurityContextHolder.getContext().setAuthentication(
-                    new UsernamePasswordAuthenticationToken(username, null, authorities));
+            UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(username, null, authorities);
+            
+            if (StringUtils.hasText(cinemaId)) {
+                final String finalCinemaId = cinemaId;
+                // Đưa cinemaId vào mục Details của Authentication
+                org.springframework.security.web.authentication.WebAuthenticationDetails details = 
+                    new org.springframework.security.web.authentication.WebAuthenticationDetails(request) {
+                        @Override
+                        public String getSessionId() {
+                            return finalCinemaId; // Tái sử dụng trường sessionId để lưu cinemaId tạm thời
+                        }
+                    };
+                authentication.setDetails(details);
+            }
+
+            SecurityContextHolder.getContext().setAuthentication(authentication);
 
             filterChain.doFilter(request, response);
 

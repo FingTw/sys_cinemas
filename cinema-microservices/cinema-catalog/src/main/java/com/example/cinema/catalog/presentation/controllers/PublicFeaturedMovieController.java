@@ -2,8 +2,10 @@ package com.example.cinema.catalog.presentation.controllers;
 
 import com.example.cinema.catalog.application.dto.FeaturedMovieDTO;
 import com.example.cinema.catalog.application.dto.MovieDTO;
+import com.example.cinema.catalog.application.dto.GenreDTO;
 import com.example.cinema.catalog.infrastructure.database.entities.FeaturedMovieJpaEntity;
 import com.example.cinema.catalog.infrastructure.database.entities.MovieJpaEntity;
+import com.example.cinema.catalog.infrastructure.database.entities.GenreJpaEntity;
 import com.example.cinema.catalog.infrastructure.database.repositories.SpringDataFeaturedMovieRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -30,6 +32,19 @@ public class PublicFeaturedMovieController {
         
         List<FeaturedMovieDTO> dtos = entities.stream().map(entity -> {
             MovieJpaEntity m = entity.getMovie();
+            
+            List<GenreDTO> genreDTOs = m.getGenres() != null ? m.getGenres().stream()
+                .map(g -> GenreDTO.builder()
+                    .id(g.getId())
+                    .name(g.getName())
+                    .code(g.getCode())
+                    .build())
+                .collect(Collectors.toList()) : null;
+
+            List<String> genreIds = m.getGenres() != null ? m.getGenres().stream()
+                .map(GenreJpaEntity::getId)
+                .collect(Collectors.toList()) : null;
+
             MovieDTO movieDTO = MovieDTO.builder()
                 .id(m.getId())
                 .title(m.getTitle())
@@ -37,7 +52,8 @@ public class PublicFeaturedMovieController {
                 .durationMinutes(m.getDurationMinutes())
                 .releaseDate(m.getReleaseDate())
                 .posterUrl(m.getPosterUrl())
-                .genre(m.getGenre())
+                .genres(genreDTOs)
+                .genreIds(genreIds)
                 .status(m.getStatus())
                 .build();
                 

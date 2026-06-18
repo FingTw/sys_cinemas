@@ -15,18 +15,18 @@ public class Movie {
     private Integer durationMinutes;
     private LocalDate releaseDate;
     private String posterUrl;
-    private String genre;
+    private java.util.Set<Genre> genres = new java.util.HashSet<>();
     private String status; // COMING_SOON, SHOWING, STOPPED
 
     @Builder
-    public Movie(String id, String title, String description, Integer durationMinutes, LocalDate releaseDate, String posterUrl, String genre, String status) {
+    public Movie(String id, String title, String description, Integer durationMinutes, LocalDate releaseDate, String posterUrl, java.util.Set<Genre> genres, String status) {
         this.id = (id != null && !id.trim().isEmpty()) ? id : java.util.UUID.randomUUID().toString();
         this.title = title;
         this.description = description;
         this.durationMinutes = durationMinutes;
         this.releaseDate = releaseDate;
         this.posterUrl = posterUrl;
-        this.genre = genre;
+        this.genres = genres != null ? genres : new java.util.HashSet<>();
         this.status = status;
     }
 

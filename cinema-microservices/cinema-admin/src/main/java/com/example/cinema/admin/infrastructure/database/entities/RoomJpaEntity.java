@@ -41,4 +41,7 @@ public class RoomJpaEntity {
     @Builder.Default
     @Column(columnDefinition = "integer default 15")
     private Integer gridCols = 15;
+
+    @Column(name = "cinema_id", nullable = false)
+    private String cinemaId;
 }

@@ -38,7 +38,7 @@ public class UserJpaEntity {
     @Column(unique = true, nullable = false)
     private String username;
 
-    @Column(nullable = false)
+    @Column(nullable = true)
     private String password;
 
     @Column(unique = true, nullable = false)
@@ -57,29 +57,30 @@ public class UserJpaEntity {
     )
     private Set<PermissionJpaEntity> permissions = new HashSet<>();
 
-    @Column(length = 1000)
-    private String activeToken;
-
     @Column(nullable = false)
     private boolean isBlocked = false;
 
-    @Column(nullable = false)
-    private Long tokenVersion = 1L;
+    @Column(name = "auth_provider", length = 50, nullable = false)
+    private String authProvider = "local";
+
+    @Column(name = "sso_subject", unique = true)
+    private String ssoSubject;
 
     public UserJpaEntity() {
     }
 
     public UserJpaEntity(String id, String username, String password, String email, Set<RoleJpaEntity> roles,
-            Set<PermissionJpaEntity> permissions, String activeToken, boolean isBlocked, Long tokenVersion) {
+            Set<PermissionJpaEntity> permissions, boolean isBlocked,
+            String authProvider, String ssoSubject) {
         this.id = id;
         this.username = username;
         this.password = password;
         this.email = email;
         this.roles = roles != null ? roles : new HashSet<>();
         this.permissions = permissions != null ? permissions : new HashSet<>();
-        this.activeToken = activeToken;
         this.isBlocked = isBlocked;
-        this.tokenVersion = tokenVersion != null ? tokenVersion : 1L;
+        this.authProvider = authProvider != null ? authProvider : "local";
+        this.ssoSubject = ssoSubject;
     }
 
     // Builder manual
@@ -94,9 +95,9 @@ public class UserJpaEntity {
         private String email;
         private Set<RoleJpaEntity> roles = new HashSet<>();
         private Set<PermissionJpaEntity> permissions = new HashSet<>();
-        private String activeToken;
         private boolean isBlocked = false;
-        private Long tokenVersion = 1L;
+        private String authProvider = "local";
+        private String ssoSubject;
 
         public UserJpaEntityBuilder id(String id) {
             this.id = id;
@@ -128,23 +129,23 @@ public class UserJpaEntity {
             return this;
         }
 
-        public UserJpaEntityBuilder activeToken(String activeToken) {
-            this.activeToken = activeToken;
-            return this;
-        }
-
         public UserJpaEntityBuilder isBlocked(boolean isBlocked) {
             this.isBlocked = isBlocked;
             return this;
         }
 
-        public UserJpaEntityBuilder tokenVersion(Long tokenVersion) {
-            this.tokenVersion = tokenVersion;
+        public UserJpaEntityBuilder authProvider(String authProvider) {
+            this.authProvider = authProvider;
+            return this;
+        }
+
+        public UserJpaEntityBuilder ssoSubject(String ssoSubject) {
+            this.ssoSubject = ssoSubject;
             return this;
         }
 
         public UserJpaEntity build() {
-            return new UserJpaEntity(id, username, password, email, roles, permissions, activeToken, isBlocked, tokenVersion);
+            return new UserJpaEntity(id, username, password, email, roles, permissions, isBlocked, authProvider, ssoSubject);
         }
     }
 
