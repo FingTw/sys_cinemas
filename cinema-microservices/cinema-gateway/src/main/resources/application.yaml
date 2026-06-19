@@ -30,12 +30,19 @@ spring:
           metadata:
             connect-timeout: 2000
             response-timeout: 15000   # per-route override (ms)
+          filters:
+            - name: RequestRateLimiter
+              args:
+                redis-rate-limiter.replenishRate: 2
+                redis-rate-limiter.burstCapacity: 5
+                redis-rate-limiter.requestedTokens: 1
+                key-resolver: "#{@ipKeyResolver}"
 
         # Catalog Service
         - id: catalog-service
           uri: "${CATALOG_SERVICE_URL}"
           predicates:
-            - Path=/api/v1/movies/**
+            - Path=/api/v1/movies/**, /api/v1/public/promotions, /api/v1/public/services
 
         # Facility Service
         - id: facility-service

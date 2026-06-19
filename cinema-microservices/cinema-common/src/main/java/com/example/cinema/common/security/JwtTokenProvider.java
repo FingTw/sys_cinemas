@@ -34,10 +34,12 @@ public class JwtTokenProvider {
         return Keys.hmacShaKeyFor(jwtSecret.getBytes());
     }
 
-    public String generateToken(String username, String userId) {
+    public String generateToken(String username, String userId, String roles, String permissions) {
         return Jwts.builder()
                 .subject(username)
                 .claim("userId", userId)
+                .claim("roles", roles)
+                .claim("permissions", permissions)
                 .issuedAt(new Date())
                 .expiration(new Date(System.currentTimeMillis() + jwtExpirationMs))
                 .signWith(getSigningKey())
@@ -76,10 +78,16 @@ public class JwtTokenProvider {
         return parseClaims(token).getSubject();
     }
 
-    // Removed getRolesFromToken and getPermissionsFromToken
-
     public String getUserIdFromToken(String token) {
         return parseClaims(token).get("userId", String.class);
+    }
+
+    public String getRolesFromToken(String token) {
+        return parseClaims(token).get("roles", String.class);
+    }
+
+    public String getPermissionsFromToken(String token) {
+        return parseClaims(token).get("permissions", String.class);
     }
 
 

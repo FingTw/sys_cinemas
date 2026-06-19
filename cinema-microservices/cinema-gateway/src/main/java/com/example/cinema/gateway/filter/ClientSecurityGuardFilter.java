@@ -35,6 +35,7 @@ public class ClientSecurityGuardFilter implements GlobalFilter, Ordered {
         String expectedClientKey = dynamicSecurityConfiguration.getExpectedClientKey();
         List<String> protectedPaths = dynamicSecurityConfiguration.getProtectedPaths();
 
+        // Khôi phục lại cơ chế check X-API-Key theo ý muốn của user
         // Check if the request target is one of the public endpoints
         boolean isPublicPath = protectedPaths.stream().anyMatch(path::startsWith);
 

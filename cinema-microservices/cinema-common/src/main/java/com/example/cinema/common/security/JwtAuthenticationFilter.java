@@ -21,8 +21,10 @@ import org.springframework.web.filter.OncePerRequestFilter;
 import java.io.IOException;
 import java.time.ZonedDateTime;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
+import org.springframework.security.core.GrantedAuthority;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -71,35 +73,52 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             jwtTokenProvider.validateToken(jwt);
 
             // Step 2: Kiểm tra Redis blacklist (token đã bị thu hồi do logout)
-            if (Boolean.TRUE.equals(redisTemplate.hasKey("blacklist:" + jwt))) {
-                log.warn("[SECURITY] Blacklisted token used | IP: {}", request.getRemoteAddr());
-                throw AuthException.tokenBlacklisted();
+            // Bọc trong try-catch để dự phòng (Fallback) khi Redis sập
+            try {
+                if (Boolean.TRUE.equals(redisTemplate.hasKey("blacklist:" + jwt))) {
+                    log.warn("[SECURITY] Blacklisted token used | IP: {}", request.getRemoteAddr());
+                    throw AuthException.tokenBlacklisted();
+                }
+
+                // Step 3: Kiểm tra Single-Session — đảm bảo token này là token đang active
+                String userId = jwtTokenProvider.getUserIdFromToken(jwt);
+                String activeToken = redisTemplate.opsForValue().get("valid_token:" + userId);
+                if (activeToken != null && !jwt.equals(activeToken)) {
+                    log.warn("[SECURITY] Stale token used for UserID: {}", userId);
+                    throw AuthException.sessionInvalidated(userId);
+                }
+            } catch (org.springframework.data.redis.RedisConnectionFailureException | org.springframework.dao.QueryTimeoutException e) {
+                log.error("[SECURITY] REDIS DOWN: Bo qua kiem tra blacklist/single-session, chuyen sang Fallback doc quyen tu JWT.");
+            } catch (AuthException e) {
+                throw e; // Ném tiếp lỗi AuthException (Blacklist/Stale token)
             }
 
-            // Step 3: Kiểm tra Single-Session — đảm bảo token này là token đang active
-            String userId = jwtTokenProvider.getUserIdFromToken(jwt);
-            String activeToken = redisTemplate.opsForValue().get("valid_token:" + userId);
-            if (activeToken != null && !jwt.equals(activeToken)) {
-                log.warn("[SECURITY] Stale token used for UserID: {}", userId);
-                throw AuthException.sessionInvalidated(userId);
-            }
-
-            // Step 4: Trích xuất authorities từ Redis thay vì JWT
+            // Step 4: Trích xuất authorities (Từ Redis hoặc Fallback từ JWT Payload)
             String username = jwtTokenProvider.getUsernameFromToken(jwt);
-            String authContext = redisTemplate.opsForValue().get("user_auth:" + userId);
+            String userId = jwtTokenProvider.getUserIdFromToken(jwt);
             
             String rolesStr = "";
             String permissionsStr = "";
             String cinemaId = null;
             
-            if (StringUtils.hasText(authContext)) {
-                String[] parts = authContext.split("\\|");
-                if (parts.length > 0) rolesStr = parts[0];
-                if (parts.length > 1) permissionsStr = parts[1];
-                if (parts.length > 2) cinemaId = parts[2];
+            try {
+                String authContext = redisTemplate.opsForValue().get("user_auth:" + userId);
+                if (StringUtils.hasText(authContext)) {
+                    String[] parts = authContext.split("\\|");
+                    if (parts.length > 0) rolesStr = parts[0];
+                    if (parts.length > 1) permissionsStr = parts[1];
+                    if (parts.length > 2) cinemaId = parts[2];
+                }
+            } catch (org.springframework.data.redis.RedisConnectionFailureException | org.springframework.dao.QueryTimeoutException e) {
+                log.warn("[SECURITY] REDIS DOWN: Fallback trich xuat quyen han tu JWT Payload cho user [{}]", username);
+                rolesStr = jwtTokenProvider.getRolesFromToken(jwt);
+                permissionsStr = jwtTokenProvider.getPermissionsFromToken(jwt);
             }
 
-            List<SimpleGrantedAuthority> authorities = Stream.concat(
+            if (rolesStr == null) rolesStr = "";
+            if (permissionsStr == null) permissionsStr = "";
+
+            Collection<GrantedAuthority> authorities = Stream.concat(
                     Optional.ofNullable(rolesStr).filter(StringUtils::hasText).stream().flatMap(s -> Arrays.stream(s.split(",")))
                             .map(r -> r.startsWith("ROLE_") ? r : "ROLE_" + r),
                     Optional.ofNullable(permissionsStr).filter(StringUtils::hasText).stream().flatMap(s -> Arrays.stream(s.split(",")))

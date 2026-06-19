@@ -72,7 +72,7 @@ public class SecurityConfig {
                                 "/api/v1/auth/check-email"         // Kiem tra ton tai email (dang ky)
                         )
                         .permitAll()
-                        .requestMatchers("/api/v1/movies/**", "/api/v1/featured-movies/**").permitAll() // Xem danh sach phim cong khai
+                        .requestMatchers("/api/v1/movies/**", "/api/v1/featured-movies/**", "/api/v1/public/**").permitAll() // Xem danh sach phim cong khai, promotions, services
                         .requestMatchers("/api/v1/showtimes/**").permitAll() // Xem suat chieu cong khai
                         .requestMatchers(HttpMethod.GET, "/api/v1/rooms/**").permitAll()
                         .requestMatchers("/api/v1/vnpay/**").permitAll() // VNPay Callback

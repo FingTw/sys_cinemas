@@ -89,7 +89,10 @@ public class AuthServiceImpl implements AuthServicePort {
             throw IamException.authenticationFailed("Tai khoan da bi khoa");
         }
 
-        // 4. Cấp Refresh Token mới
+        // 4. Thu hoi toan bo cac phien dang nhap truoc do (chinh sach 1 tai khoan 1 phien)
+        tokenRepositoryPort.revokeAllByUserId(user.getId());
+
+        // 5. Cấp Refresh Token mới
         String refreshToken = issueTokens(user, ipAddress, userAgent);
 
         // 5. Tạo Access Token (JWT)
@@ -101,9 +104,9 @@ public class AuthServiceImpl implements AuthServicePort {
                 .flatMap(role -> role.getPermissions().stream())
                 .map(com.example.cinema.iam.domain.entities.Permission::getName)
                 .collect(Collectors.toSet());
-
-        String accessToken = jwtTokenProvider.generateToken(user.getUsername(), user.getId());
-
+        String rolesStr = String.join(",", roleNames);
+        String permissionsStr = String.join(",", effectivePermissions);
+        String accessToken = jwtTokenProvider.generateToken(user.getUsername(), user.getId(), rolesStr, permissionsStr);
         // 6. Blacklist token cũ nếu đang đăng nhập (lấy từ Redis thay vì DB)
         String prevToken = redisTemplate.opsForValue().get("valid_token:" + user.getId());
         if (prevToken != null && !prevToken.isEmpty()) {
@@ -209,7 +212,9 @@ public class AuthServiceImpl implements AuthServicePort {
                 .map(com.example.cinema.iam.domain.entities.Permission::getName)
                 .collect(Collectors.toSet());
 
-        String newAccessToken = jwtTokenProvider.generateToken(user.getUsername(), user.getId());
+        String rolesStr = String.join(",", roleNames);
+        String permissionsStr = String.join(",", effectivePermissions);
+        String newAccessToken = jwtTokenProvider.generateToken(user.getUsername(), user.getId(), rolesStr, permissionsStr);
 
         // Không lưu access_token vào DB nữa, chỉ cập nhật Cache Redis
         redisTemplate.opsForValue().set("valid_token:" + user.getId(), newAccessToken);
@@ -360,13 +365,16 @@ public class AuthServiceImpl implements AuthServicePort {
             throw IamException.authenticationFailed("Tai khoan da bi khoa");
         }
 
-        // Buoc 4: Luu Keycloak refresh token vao Redis
+        // Buoc 4: Thu hoi toan bo phien dang nhap hien tai cua user nay
+        tokenRepositoryPort.revokeAllByUserId(user.getId());
+
+        // Buoc 5: Luu Keycloak refresh token vao Redis
         if (keycloakRefreshToken != null && !keycloakRefreshToken.trim().isEmpty()) {
             redisTemplate.opsForValue().set("kc_refresh:" + user.getId(),
                     keycloakRefreshToken, 30, TimeUnit.DAYS);
         }
 
-        // Buoc 5: Phat Local JWT (y hethuong)
+        // Buoc 6: Phat Local JWT (y hethuong)
         String refreshToken = issueTokens(user, ipAddress, userAgent);
 
         Set<String> roleNames = user.getRoles().stream()
@@ -377,8 +385,9 @@ public class AuthServiceImpl implements AuthServicePort {
                 .flatMap(role -> role.getPermissions().stream())
                 .map(com.example.cinema.iam.domain.entities.Permission::getName)
                 .collect(Collectors.toSet());
-
-        String accessToken = jwtTokenProvider.generateToken(user.getUsername(), user.getId());
+        String rolesStr = String.join(",", roleNames);
+        String permissionsStr = String.join(",", effectivePermissions);
+        String accessToken = jwtTokenProvider.generateToken(user.getUsername(), user.getId(), rolesStr, permissionsStr);
 
         String prevToken = redisTemplate.opsForValue().get("valid_token:" + user.getId());
         if (prevToken != null && !prevToken.isEmpty()) {
