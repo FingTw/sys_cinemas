@@ -113,6 +113,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 log.warn("[SECURITY] REDIS DOWN: Fallback trich xuat quyen han tu JWT Payload cho user [{}]", username);
                 rolesStr = jwtTokenProvider.getRolesFromToken(jwt);
                 permissionsStr = jwtTokenProvider.getPermissionsFromToken(jwt);
+                cinemaId = jwtTokenProvider.getCinemaIdFromToken(jwt);
             }
 
             if (rolesStr == null) rolesStr = "";

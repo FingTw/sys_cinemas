@@ -66,6 +66,9 @@ public class UserJpaEntity {
     @Column(name = "sso_subject", unique = true)
     private String ssoSubject;
 
+    @Column(name = "cinema_id")
+    private String cinemaId;
+
     public UserJpaEntity() {
     }
 
@@ -81,6 +84,22 @@ public class UserJpaEntity {
         this.isBlocked = isBlocked;
         this.authProvider = authProvider != null ? authProvider : "local";
         this.ssoSubject = ssoSubject;
+        this.cinemaId = null;
+    }
+
+    public UserJpaEntity(String id, String username, String password, String email, Set<RoleJpaEntity> roles,
+            Set<PermissionJpaEntity> permissions, boolean isBlocked,
+            String authProvider, String ssoSubject, String cinemaId) {
+        this.id = id;
+        this.username = username;
+        this.password = password;
+        this.email = email;
+        this.roles = roles != null ? roles : new HashSet<>();
+        this.permissions = permissions != null ? permissions : new HashSet<>();
+        this.isBlocked = isBlocked;
+        this.authProvider = authProvider != null ? authProvider : "local";
+        this.ssoSubject = ssoSubject;
+        this.cinemaId = cinemaId;
     }
 
     // Builder manual
@@ -98,6 +117,7 @@ public class UserJpaEntity {
         private boolean isBlocked = false;
         private String authProvider = "local";
         private String ssoSubject;
+        private String cinemaId;
 
         public UserJpaEntityBuilder id(String id) {
             this.id = id;
@@ -144,8 +164,13 @@ public class UserJpaEntity {
             return this;
         }
 
+        public UserJpaEntityBuilder cinemaId(String cinemaId) {
+            this.cinemaId = cinemaId;
+            return this;
+        }
+
         public UserJpaEntity build() {
-            return new UserJpaEntity(id, username, password, email, roles, permissions, isBlocked, authProvider, ssoSubject);
+            return new UserJpaEntity(id, username, password, email, roles, permissions, isBlocked, authProvider, ssoSubject, cinemaId);
         }
     }
 

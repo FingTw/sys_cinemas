@@ -23,6 +23,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import com.example.cinema.admin.application.ports.out.NotificationPort;
 import com.example.cinema.admin.application.ports.out.CachePort;
+import com.example.cinema.admin.application.utils.SecurityUtils;
 import java.time.Duration;
 
 @Service
@@ -46,7 +47,21 @@ public class AdminBookingUseCaseImpl implements AdminBookingUseCase {
     public List<BookingDetailResponse> getAllBookings() {
         log.info("Fetching all bookings for admin");
         try {
-            return bookingRepository.findAll().stream().map(booking -> {
+            List<Booking> bookings = bookingRepository.findAll();
+            String staffCinemaId = SecurityUtils.getStaffCinemaId();
+            
+            if (staffCinemaId != null && !staffCinemaId.trim().isEmpty()) {
+                bookings = bookings.stream().filter(booking -> {
+                    Showtime showtime = showtimeRepository.findById(booking.getShowtimeId()).orElse(null);
+                    if (showtime != null) {
+                        Room room = roomRepository.findById(showtime.getRoomId()).orElse(null);
+                        return room != null && staffCinemaId.equals(room.getCinemaId());
+                    }
+                    return false;
+                }).collect(Collectors.toList());
+            }
+
+            return bookings.stream().map(booking -> {
                 String username = "N/A";
                 if ("GUEST".equals(booking.getUserId()) || (booking.getPaymentTransactionId() != null && booking.getPaymentTransactionId().startsWith("DIRECT_SALE_"))) {
                     username = "Khách vãn lai";
@@ -304,15 +319,45 @@ public class AdminBookingUseCaseImpl implements AdminBookingUseCase {
         log.info("Compiling dashboard statistics...");
         try {
             DashboardStatsDTO stats = new DashboardStatsDTO();
+            String staffCinemaId = SecurityUtils.getStaffCinemaId();
+
+            List<User> allUsers = userRepository.findAll();
+            List<Movie> allMovies = movieRepository.findAll();
+            List<Showtime> allShowtimes = showtimeRepository.findAll();
+            List<Room> allRooms = roomRepository.findAll();
+            List<Booking> allBookings = bookingRepository.findAll();
+
+            if (staffCinemaId != null && !staffCinemaId.trim().isEmpty()) {
+                allRooms = allRooms.stream()
+                        .filter(r -> staffCinemaId.equals(r.getCinemaId()))
+                        .collect(Collectors.toList());
+                        
+                List<String> roomIds = allRooms.stream().map(Room::getId).collect(Collectors.toList());
+                
+                allShowtimes = allShowtimes.stream()
+                        .filter(s -> roomIds.contains(s.getRoomId()))
+                        .collect(Collectors.toList());
+                        
+                Set<String> movieIds = allShowtimes.stream().map(Showtime::getMovieId).collect(Collectors.toSet());
+                
+                allMovies = allMovies.stream()
+                        .filter(m -> movieIds.contains(m.getId()))
+                        .collect(Collectors.toList());
+                        
+                Set<String> showtimeIds = allShowtimes.stream().map(Showtime::getId).collect(Collectors.toSet());
+                
+                allBookings = allBookings.stream()
+                        .filter(b -> showtimeIds.contains(b.getShowtimeId()))
+                        .collect(Collectors.toList());
+            }
 
             // 1. DB Totals
-            stats.setTotalUsers(userRepository.findAll().size());
-            stats.setTotalMovies(movieRepository.findAll().size());
-            stats.setTotalShowtimes(showtimeRepository.findAll().size());
-            stats.setTotalRooms(roomRepository.findAll().size());
+            stats.setTotalUsers(allUsers.size()); // Users is system-wide normally, but keep as is
+            stats.setTotalMovies(allMovies.size());
+            stats.setTotalShowtimes(allShowtimes.size());
+            stats.setTotalRooms(allRooms.size());
 
             // 2. Booking Totals
-            List<Booking> allBookings = bookingRepository.findAll();
             stats.setTotalBookings(allBookings.size());
             stats.setPendingBookings(allBookings.stream().filter(b -> "PENDING".equalsIgnoreCase(b.getStatus())).count());
             stats.setConfirmedBookings(allBookings.stream().filter(b -> "CONFIRMED".equalsIgnoreCase(b.getStatus())).count());
@@ -326,12 +371,10 @@ public class AdminBookingUseCaseImpl implements AdminBookingUseCase {
             stats.setTotalRevenue(totalRevenue);
 
             // 4. Movie status totals
-            List<Movie> allMovies = movieRepository.findAll();
             stats.setMoviesShowing(allMovies.stream().filter(m -> "SHOWING".equalsIgnoreCase(m.getStatus())).count());
             stats.setMoviesComingSoon(allMovies.stream().filter(m -> "COMING_SOON".equalsIgnoreCase(m.getStatus())).count());
 
             // 5. Showtime status totals
-            List<Showtime> allShowtimes = showtimeRepository.findAll();
             stats.setShowtimesScheduled(allShowtimes.stream().filter(s -> "SCHEDULED".equalsIgnoreCase(s.getStatus())).count());
             stats.setShowtimesPlaying(allShowtimes.stream().filter(s -> "PLAYING".equalsIgnoreCase(s.getStatus())).count());
             stats.setShowtimesCompleted(allShowtimes.stream().filter(s -> "COMPLETED".equalsIgnoreCase(s.getStatus())).count());

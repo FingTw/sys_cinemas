@@ -34,12 +34,13 @@ public class JwtTokenProvider {
         return Keys.hmacShaKeyFor(jwtSecret.getBytes());
     }
 
-    public String generateToken(String username, String userId, String roles, String permissions) {
+    public String generateToken(String username, String userId, String roles, String permissions, String cinemaId) {
         return Jwts.builder()
                 .subject(username)
                 .claim("userId", userId)
                 .claim("roles", roles)
                 .claim("permissions", permissions)
+                .claim("cinemaId", cinemaId)
                 .issuedAt(new Date())
                 .expiration(new Date(System.currentTimeMillis() + jwtExpirationMs))
                 .signWith(getSigningKey())
@@ -90,7 +91,9 @@ public class JwtTokenProvider {
         return parseClaims(token).get("permissions", String.class);
     }
 
-
+    public String getCinemaIdFromToken(String token) {
+        return parseClaims(token).get("cinemaId", String.class);
+    }
 
     public Date getExpirationDateFromToken(String token) {
         return parseClaims(token).getExpiration();

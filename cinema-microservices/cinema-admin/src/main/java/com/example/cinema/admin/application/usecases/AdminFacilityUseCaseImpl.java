@@ -89,12 +89,15 @@ public class AdminFacilityUseCaseImpl implements AdminFacilityUseCase {
     @Override
     public List<RoomDTO> getAllRooms() {
         try {
-            return roomRepository.findAll().stream().map(room -> {
-                RoomDTO dto = modelMapper.map(room, RoomDTO.class);
-                dto.setTotalSeats(seatRepository.countByRoomId(room.getId()));
-                enrichRoomDTO(dto);
-                return dto;
-            }).collect(Collectors.toList());
+            String staffCinemaId = com.example.cinema.admin.application.utils.SecurityUtils.getStaffCinemaId();
+            return roomRepository.findAll().stream()
+                .filter(room -> staffCinemaId == null || staffCinemaId.equals(room.getCinemaId()))
+                .map(room -> {
+                    RoomDTO dto = modelMapper.map(room, RoomDTO.class);
+                    dto.setTotalSeats(seatRepository.countByRoomId(room.getId()));
+                    enrichRoomDTO(dto);
+                    return dto;
+                }).collect(Collectors.toList());
         } catch (Exception e) {
             throw new ServerException("Failed to retrieve rooms: " + e.getMessage(), e);
         }

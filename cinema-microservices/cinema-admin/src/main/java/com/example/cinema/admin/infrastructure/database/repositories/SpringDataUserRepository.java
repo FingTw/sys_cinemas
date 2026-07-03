@@ -12,4 +12,8 @@ public interface SpringDataUserRepository extends JpaRepository<UserJpaEntity, S
 
     @org.springframework.data.jpa.repository.EntityGraph(attributePaths = {"roles", "roles.permissions"})
     Optional<UserJpaEntity> findById(String id);
+
+    @org.springframework.data.jpa.repository.Modifying
+    @org.springframework.data.jpa.repository.Query("UPDATE UserJpaEntity u SET u.cinemaId = :cinemaId WHERE u.id = :id")
+    void updateWorkplace(@org.springframework.data.repository.query.Param("id") String id, @org.springframework.data.repository.query.Param("cinemaId") String cinemaId);
 }

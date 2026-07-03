@@ -31,7 +31,7 @@ public class UserJpaEntity {
     @Column(unique = true, nullable = false)
     private String username;
 
-    @Column(nullable = false)
+    @Column(nullable = true)
     private String password;
 
     @Column(unique = true, nullable = false)
@@ -58,5 +58,7 @@ public class UserJpaEntity {
     @Column(nullable = false)
     private boolean isBlocked = false;
 
+    @Column(name = "cinema_id")
+    private String cinemaId;
 
 }

@@ -142,7 +142,9 @@ public class AdminCinemaUseCaseImpl implements AdminCinemaUseCase {
     @Override
     public List<CinemaDTO> getAllCinemas() {
         try {
+            String staffCinemaId = com.example.cinema.admin.application.utils.SecurityUtils.getStaffCinemaId();
             return cinemaRepository.findAll().stream()
+                    .filter(c -> staffCinemaId == null || staffCinemaId.equals(c.getId()))
                     .map(this::convertToDTO)
                     .collect(Collectors.toList());
         } catch (Exception e) {

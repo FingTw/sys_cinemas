@@ -5,8 +5,10 @@ import com.example.cinema.booking.application.dto.CreateBookingRequest;
 import com.example.cinema.booking.application.dto.SeatStatusDTO;
 import com.example.cinema.booking.domain.entities.Booking;
 import com.example.cinema.booking.domain.entities.BookingSeat;
+import com.example.cinema.booking.domain.entities.BookingItem;
 import com.example.cinema.booking.application.ports.out.ShowtimePort;
 import com.example.cinema.booking.application.ports.out.FacilityPort;
+import com.example.cinema.booking.application.ports.out.CatalogPort;
 import com.example.cinema.booking.application.ports.out.UserPort;
 import com.example.cinema.booking.application.ports.out.EventPublisherPort;
 import com.example.cinema.booking.application.dto.feign.ShowtimeDTO;
@@ -39,8 +41,9 @@ import java.time.Duration;
 public class BookingServiceImpl implements BookingService {
 
     private final BookingRepository bookingRepository;
-    private final FacilityPort facilityPort;
     private final ShowtimePort showtimePort;
+    private final FacilityPort facilityPort;
+    private final CatalogPort catalogPort;
     private final PaymentGatewayPort paymentGatewayPort;
     private final UserPort userPort;
     private final EventPublisherPort eventPublisherPort;
@@ -108,6 +111,10 @@ public class BookingServiceImpl implements BookingService {
             throw new ClientException("Khong tim thay suat chieu hoac loi ket noi den Scheduling Service");
         }
 
+        if (showtime.getStartTime() != null && showtime.getStartTime().isBefore(LocalDateTime.now())) {
+            throw new ClientException("Khong the dat ve cho suat chieu da bat dau hoac trong qua khu!");
+        }
+
         List<SeatDTO> seats = new ArrayList<>();
         for (String id : request.getSeatIds()) {
             try {
@@ -132,7 +139,7 @@ public class BookingServiceImpl implements BookingService {
         }
 
         // 3. Tao Booking voi trang thai PENDING va het han sau 5 phut
-        Booking booking = Booking.create(userId, request.getShowtimeId(), bookingSeats, 5);
+        Booking booking = Booking.create(userId, request.getShowtimeId(), bookingSeats, new ArrayList<>(), 5);
 
         Booking savedBooking = bookingRepository.save(booking);
 
@@ -290,7 +297,7 @@ public class BookingServiceImpl implements BookingService {
     }
 
     @Override
-    public BookingResponse createPendingBooking(String showtimeId, List<String> seatIds, String userId) {
+    public BookingResponse createPendingBooking(String showtimeId, List<String> seatIds, List<com.example.cinema.booking.application.dto.BookingItemRequest> items, String userId) {
         log.info("Camunda: Creating pending booking for User: [{}], Showtime: [{}], Seats: {}", userId, showtimeId, seatIds);
 
         if (seatIds == null || seatIds.isEmpty()) {
@@ -319,7 +326,7 @@ public class BookingServiceImpl implements BookingService {
         }
 
         try {
-            return executeCreatePendingBooking(showtimeId, seatIds, userId);
+            return executeCreatePendingBooking(showtimeId, seatIds, items, userId);
         } finally {
             if (!lockedKeys.isEmpty()) {
                 redisTemplate.delete(lockedKeys);
@@ -328,7 +335,7 @@ public class BookingServiceImpl implements BookingService {
     }
 
     @Transactional
-    public BookingResponse executeCreatePendingBooking(String showtimeId, List<String> seatIds, String userId) {
+    public BookingResponse executeCreatePendingBooking(String showtimeId, List<String> seatIds, List<com.example.cinema.booking.application.dto.BookingItemRequest> itemRequests, String userId) {
         if (bookingRepository.isAnySeatOccupied(showtimeId, seatIds)) {
             throw new ClientException("Mot hoac nhieu ghe ban chon vua moi duoc nguoi khac giu cho. Vui long chon ghe khac!");
         }
@@ -338,6 +345,10 @@ public class BookingServiceImpl implements BookingService {
             showtime = showtimePort.getShowtimeById(showtimeId).orElseThrow(() -> new ClientException("Suat chieu khong ton tai"));
         } catch (Exception e) {
             throw new ClientException("Khong tim thay suat chieu hoac loi ket noi den Scheduling Service");
+        }
+
+        if (showtime.getStartTime() != null && showtime.getStartTime().isBefore(LocalDateTime.now())) {
+            throw new ClientException("Khong the dat ve cho suat chieu da bat dau hoac trong qua khu!");
         }
 
         List<SeatDTO> seats = new ArrayList<>();
@@ -363,7 +374,22 @@ public class BookingServiceImpl implements BookingService {
                     .build());
         }
 
-        Booking booking = Booking.create(userId, showtimeId, bookingSeats, 5);
+        List<BookingItem> bookingItems = new ArrayList<>();
+        if (itemRequests != null && !itemRequests.isEmpty()) {
+            for (com.example.cinema.booking.application.dto.BookingItemRequest req : itemRequests) {
+                com.example.cinema.booking.application.dto.feign.ProductDTO product = catalogPort.getProductById(req.getProductId())
+                        .orElseThrow(() -> new ClientException("Không tìm thấy sản phẩm F&B ID: " + req.getProductId()));
+                
+                bookingItems.add(BookingItem.builder()
+                        .productId(product.getId())
+                        .productName(product.getName())
+                        .quantity(req.getQuantity())
+                        .unitPrice(product.getPrice())
+                        .build());
+            }
+        }
+
+        Booking booking = Booking.create(userId, showtimeId, bookingSeats, bookingItems, 5);
 
         Booking savedBooking = bookingRepository.save(booking);
 

@@ -14,7 +14,7 @@ import lombok.extern.slf4j.Slf4j;
  * Không kiểm tra quyền sở hữu (userId), chỉ kiểm tra ROLE_ADMIN.
  */
 @RestController
-@RequestMapping("/api/internal/bookings")
+@RequestMapping("/api/v1/internal/bookings")
 @RequiredArgsConstructor
 @Slf4j
 public class BookingInternalController {
@@ -25,7 +25,6 @@ public class BookingInternalController {
      * Lấy chi tiết booking theo ID — không kiểm tra userId ownership.
      * Dùng cho admin: in vé PDF, in receipt PDF từ cinema-admin service.
      */
-    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN', 'ROLE_STAFF')")
     @GetMapping("/{bookingId}")
     public ResponseEntity<BookingDetailResponse> getBookingDetailInternal(
             @PathVariable String bookingId) {

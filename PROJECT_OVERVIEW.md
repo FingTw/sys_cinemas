@@ -6,7 +6,7 @@ Tài liệu này cung cấp cái nhìn toàn diện về bối cảnh công ngh�
 
 ## 1. Tổng quan Kiến trúc Hệ thống (System Architecture Overview)
 
-Hệ thống Cinema được thiết kế dưới dạng tập hợp các **Microservices** độc lập (Spring Boot 3.2.4, Java 17), trao đổi với nhau thông qua HTTP REST (sử dụng Feign Clients) và các sự kiện bất đồng bộ qua **Kafka**. Cơ sở dữ liệu sử dụng **PostgreSQL 16** phân chia theo schema logic riêng biệt và bộ nhớ đệm **Redis 7** phục vụ quản lý phiên, khóa phân tán và bộ nhớ đệm phân quyền. Ứng dụng tích hợp công cụ theo dõi phân tán (Distributed Tracing) qua **OpenTelemetry**.
+Hệ thống Cinema được thiết kế dưới dạng tập hợp các **Microservices** độc lập (Spring Boot 3.2.4, Java 17), trao đổi với nhau thông qua HTTP REST (sử dụng Feign Clients) và các sự kiện bất đồng bộ qua **Kafka**. Cơ sở dữ liệu sử dụng **PostgreSQL 16** phân chia theo schema logic riêng biệt và bộ nhớ đệm **Redis 7** phục vụ quản lý phiên, khóa phân tán và bộ nhớ đệm phân quyền. Ứng dụng tích hợp công cụ theo dõi phân tán (Distributed Tracing) thông qua **Spring Boot 3 Micrometer Tracing**, **OpenTelemetry (OTLP)** và **Jaeger**.
 
 Ở lớp frontend, hệ thống sử dụng **Angular 20.3** kết hợp **TailwindCSS 3.4**, **Angular Material**, và **Ng-Zorro-Antd** để cung cấp giao diện người dùng hiện đại, quản lý trạng thái bằng **RxJS** và biểu đồ thống kê bằng **Chart.js**.
 
@@ -41,11 +41,17 @@ flowchart TD
     IAM <--> Redis[(Redis Cache & Session)]
     Booking <--> Redis
     GW <--> Redis
+    
+    %% Distributed Tracing %%
+    GW -.->|OTLP/HTTP| Jaeger[Jaeger Tracing :16686]
+    IAM -.->|OTLP/HTTP| Jaeger
+    Booking -.->|OTLP/HTTP| Jaeger
+    Catalog -.->|OTLP/HTTP| Jaeger
 ```
 
 ### Các thành phần chính trong hệ thống:
-1.  **cinema-gateway** (Port `8080`): API Gateway định tuyến tất cả các yêu cầu từ Client, thực hiện kiểm soát CORS động, xác thực Client Key bảo vệ API Public, sinh và truyền `X-Request-Id` phục vụ tracing log.
-2.  **cinema-iam**: Quản lý danh tính và phân quyền (Identity & Access Management). Phối hợp với Keycloak để xác thực thông tin đăng nhập, sinh khoá RSA động trong bộ nhớ RAM, cấp phát Access Token & Refresh Token, thực hiện chính sách phiên làm việc duy nhất (Single Session) thông qua Redis.
+1.  **cinema-gateway** (Port `8080`): API Gateway định tuyến tất cả các yêu cầu từ Client, thực hiện kiểm soát CORS động, xác thực Client Key bảo vệ API Public. Đóng vai trò là điểm khởi tạo W3C Trace Context để truyền xuyên suốt các microservice.
+2.  **cinema-iam**: Quản lý danh tính và phân quyền (Identity & Access Management). Trực tiếp quản lý xác thực bằng cơ sở dữ liệu nội bộ, sinh khoá RSA động trong bộ nhớ RAM để bảo mật mật khẩu, cấp phát Access Token & Refresh Token, thực hiện chính sách phiên làm việc duy nhất (Single Session) thông qua Redis. Có cung cấp Endpoint API SSO để tích hợp tuỳ chọn với Keycloak.
 3.  **cinema-catalog**: Quản lý danh mục phim (Movies), phim nổi bật (Featured Movies), và các banner quảng cáo động (Banners).
 4.  **cinema-facility**: Quản lý hạ tầng rạp bao gồm phòng chiếu (Rooms) và sơ đồ ghế ngồi (Seats) của từng phòng (loại ghế Standard, VIP, Couple).
 5.  **cinema-scheduling**: Quản lý lịch chiếu/suất chiếu (Showtimes) của phim tại các phòng chiếu, kèm theo định giá vé cơ sở cho từng suất chiếu.
@@ -70,7 +76,7 @@ sequenceDiagram
     actor Client as Angular Client
     participant GW as API Gateway
     participant IAM as cinema-iam
-    participant KC as Keycloak (SPI)
+    participant DB as Postgres (auth schema)
     participant Redis as Redis Cache
 
     Note over Client, IAM: 1. Lấy RSA Public Key
@@ -85,7 +91,7 @@ sequenceDiagram
     IAM->>IAM: Giải mã mật khẩu bằng RSA Private Key
     IAM->>IAM: Kiểm tra Password Policy động từ DB
     IAM->>IAM: Băm mật khẩu: BCrypt(password + username.toLowerCase())
-    IAM->>IAM: Lưu tài khoản vào bảng auth.users
+    IAM->>DB: Lưu tài khoản vào bảng auth.users
     IAM-->>Client: HTTP 200 OK (Đăng ký thành công)
 
     Note over Client, Redis: 3. Đăng nhập hệ thống (Single Session)
@@ -93,25 +99,23 @@ sequenceDiagram
     Client->>GW: POST /api/v1/auth/login (username, encryptedPassword)
     GW->>IAM: Chuyển tiếp request
     IAM->>IAM: Giải mã mật khẩu bằng RSA Private Key
-    IAM->>KC: Gọi KeycloakAuthGateway.verifyCredentials(username, plainPassword)
-    KC->>KC: Chạy SPI kết nối DB, kiểm tra so khớp BCrypt(plainPassword + username)
-    KC-->>IAM: Trả về xác thực thành công (true)
+    IAM->>DB: Truy vấn thông tin User bằng username
+    IAM->>IAM: So khớp BCrypt mật khẩu
     IAM->>IAM: Kiểm tra xem User có đang bị khóa (is_blocked = true) không
-    IAM->>IAM: Lấy danh sách Roles & Permissions từ DB
-    IAM->>IAM: Đọc active_token cũ trong DB của User (nếu có)
+    IAM->>DB: Lấy danh sách Roles & Permissions từ DB
+    IAM->>Redis: Đọc valid_token:<userId> cũ trong Redis (nếu có)
     alt Có phiên đăng nhập cũ hoạt động
         IAM->>Redis: Đưa token cũ vào blacklist (Key: blacklist:<token>, TTL = thời gian hết hạn còn lại)
     end
-    IAM->>IAM: Tạo JWT Access Token mới (chứa token_version) & Refresh Token mới (JTI UUID)
-    IAM->>IAM: Lưu active_token mới vào bảng auth.users
-    IAM->>Redis: Cập nhật valid_token:<userId> = active_token mới
+    IAM->>IAM: Tạo JWT Access Token mới (chứa Roles, Permissions) & Refresh Token mới
+    IAM->>Redis: Cập nhật valid_token:<userId> = accessToken mới
     IAM->>Redis: Lưu thông tin quyền hạn vào user_auth:<userId> (Roles|Permissions)
-    IAM-->>Client: Trả về Access Token & Refresh Token (Mã hóa phản hồi AES)
+    IAM-->>Client: Trả về Access Token & Refresh Token
 ```
 
 1.  **Lấy Khóa Công khai RSA**: Client gọi `GET /api/v1/auth/public-key`. API Gateway kiểm tra header `X-API-Key` qua `ClientSecurityGuardFilter`. Nếu hợp lệ, `cinema-iam` trả về Public Key RSA (được tạo ngẫu nhiên trong bộ nhớ bởi `RsaCryptoServiceImpl`).
 2.  **Đăng ký tài khoản (Register)**: Client dùng Public Key RSA nhận được để mã hóa mật khẩu thô và gửi yêu cầu tạo tài khoản. Server giải mã bằng Private Key, băm BCrypt cùng muối và lưu DB.
-3.  **Đăng nhập (Login)**: Keycloak sử dụng `CinemaUserStorageProvider` để kiểm tra kết nối CSDL và mật khẩu. `cinema-iam` lấy thông tin quyền hạn để tạo Access Token (JWT) và Refresh Token.
+3.  **Đăng nhập (Login)**: `cinema-iam` tự động truy vấn CSDL nội bộ và so khớp mật khẩu bằng BCrypt mà không đi qua Keycloak (để tối ưu tốc độ). Keycloak hiện chỉ đóng vai trò hỗ trợ luồng SSO tuỳ chọn.
 4.  **Kiểm soát Phiên làm việc Duy nhất (Single Session)**: Trước khi lưu token mới, token cũ bị thu hồi vào **Redis Blacklist** và gỡ khỏi Redis `valid_token:<userId>`. Filter `JwtAuthenticationFilter` ngăn chặn việc sử dụng token đã bị thu hồi hoặc phiên đã được tạo mới ở nơi khác.
 
 ---
@@ -225,11 +229,17 @@ Sử dụng Camunda **User Tasks** kết hợp với **Angular Frontend Tasklist
 
 ### 2.5. Luồng Cấu hình Động & Webhook đồng bộ (Dynamic Configs & Webhook Sync)
 
-Hệ thống hỗ trợ thay đổi cấu hình CORS, danh sách đường dẫn cần bảo vệ hoặc bypass và chính sách bảo mật động tại Runtime mà không cần khởi động lại API Gateway:
+Hệ thống hỗ trợ thay đổi cấu hình CORS, danh sách đường dẫn cần bảo vệ hoặc bypass và chính sách bảo mật động tại Runtime mà không cần khởi động lại API Gateway hay các microservices:
 
--   **Cập nhật cấu hình**: Quản trị viên gọi API `PUT /api/v1/admin/cors-config` trên `cinema-admin`.
--   **Kích hoạt Webhook đồng bộ**: Service Admin gửi một yêu cầu HTTP nội bộ `POST /internal/gateway/refresh-cors` (Header `X-Internal-Api-Key`) sang API Gateway.
--   **Gateway nạp nóng cấu hình (Hot Reload)**: `GatewayInternalController` xác thực API Key nội bộ, gọi ngược lại Admin Service để lấy dữ liệu. Cập nhật các biến `AtomicReference<CorsConfiguration>` trong RAM. Mọi request tiếp theo lập tức áp dụng bộ CORS mới nhất.
+-   **Cập nhật cấu hình**: Quản trị viên gọi các API quản trị như `PUT /api/v1/admin/cors-config` hoặc `PUT /api/v1/admin/security-config` trên `cinema-admin`.
+-   **Đồng bộ Redis (Security Config)**: Khi cấu hình bảo mật hệ thống được cập nhật, Service Admin ghi các giá trị mới trực tiếp vào Redis:
+    -   `security:client-key`: API Key dùng để bảo vệ các API Public dành riêng cho Client/Frontend.
+    -   `security:bypass-paths`: Danh sách các API/đường dẫn được phép bỏ qua xác thực API Key. Các microservices backend (qua `ApiKeyFilter` trong `cinema-common`) sẽ tự động đọc trực tiếp từ Redis ở mỗi request, cho phép cập nhật bypass list tức thì.
+-   **Kích hoạt Webhook đồng bộ sang API Gateway**: Service Admin gửi yêu cầu HTTP nội bộ (kèm Header `X-Internal-Api-Key`) sang API Gateway để yêu cầu nạp lại cấu hình:
+    -   `POST /internal/gateway/refresh-cors`: Yêu cầu đồng bộ cấu hình CORS mới.
+    -   `POST /internal/gateway/refresh-security`: Yêu cầu đồng bộ cấu hình API Key và các đường dẫn bảo vệ của Gateway.
+-   **Gateway nạp nóng cấu hình (Hot Reload)**: `GatewayInternalController` xác nhận khoá API nội bộ hợp lệ, gọi ngược lại Admin Service qua WebClient để lấy dữ liệu mới nhất và cập nhật vào bộ nhớ RAM của Gateway (`AtomicReference<CorsConfiguration>` và `DynamicSecurityConfiguration`). Mọi request tiếp theo lập tức áp dụng cấu hình mới nhất.
+
 
 ---
 
@@ -253,18 +263,18 @@ Hệ thống hỗ trợ thay đổi cấu hình CORS, danh sách đường dẫn
 
 ### 3.3. Ràng buộc về Bảo mật & Mã hóa
 -   **End-to-End Encryption**:
-    -   **Request (Body)**: Angular mã hoá toàn bộ body của `POST`, `PUT`, `PATCH` bằng AES (khóa `cryptoKey`). Backend giải mã qua `AesDecryptionFilter`.
+    -   **Request & Response (Body)**: Angular tự động mã hoá body của các yêu cầu `POST`, `PUT`, `PATCH` bằng AES (khóa `cryptoKey`) và giải mã dữ liệu phản hồi từ backend. Phía Backend giải mã request body qua `AesDecryptionFilter` và mã hoá response body qua `AesEncryptionResponseFilter`.
     -   **Mã hoá mật khẩu**: Angular mã hóa RSA mật khẩu đăng nhập/đăng ký. `cinema-iam` giải mã bằng Private Key lưu trong RAM.
--   **Xác thực API Key**: Giao tiếp Public (từ Frontend) yêu cầu `X-Client-Key`. Giao tiếp Internal (giữa các Microservices qua Feign) yêu cầu `X-Internal-Api-Key`.
+-   **Xác thực API Key**: Giao tiếp Public (từ Frontend) yêu cầu `X-Client-Key` hoặc `X-API-Key`. Giao tiếp Internal (giữa các Microservices qua Feign) yêu cầu `X-Internal-Api-Key`.
 
 ### 3.4. Ràng buộc về Đồng nhất & Giao tác
 -   **Múi giờ đồng nhất**: Toàn bộ hệ thống (JVM, Docker Containers, PostgreSQL, Redis) đồng bộ múi giờ `Asia/Ho_Chi_Minh`.
 -   **Phân bổ giao dịch**: Mọi thay đổi DB phải bọc trong `@Transactional`. Giải phóng khóa Redis phải nằm trong khối `finally` sau khi Transaction đã commit. Camunda Process variables không nên dùng lưu file nhị phân lớn.
 
-### 3.5. Quy định về Ghi log
--   **Trace logs**: Header `X-Request-Id` (từ Gateway) phải được MDC ghi vào mọi dòng log giúp tracing qua các service.
+### 3.5. Quy định về Ghi log & Distributed Tracing
+-   **W3C Trace Context**: Sử dụng chuẩn W3C Trace Context. `traceId` và `spanId` được **Spring Boot 3 Micrometer Tracing** tự động thêm vào MDC và xuất hiện trong mọi dòng log để liên kết các request xuyên suốt hệ thống.
+-   **Jaeger & OTLP**: Dữ liệu Trace được tự động gửi về **Jaeger** qua giao thức OTLP/HTTP (cổng `4318`) bằng `opentelemetry-exporter-otlp`. Địa chỉ endpoint cấu hình qua biến môi trường `OTEL_EXPORTER_OTLP_ENDPOINT` (cả trong Docker và localhost).
 -   **Ẩn dữ liệu nhạy cảm**: Tuyệt đối không log thông tin password, JWT hay payment info.
--   **OpenTelemetry**: Truy vết hiệu năng qua OTLP endpoints được cấu hình trong `docker-compose.yml`.
 
 ---
 
@@ -274,8 +284,8 @@ Hệ thống hỗ trợ thay đổi cấu hình CORS, danh sách đường dẫn
     -   *Hiện trạng*: RSA KeyPair đang sinh ngẫu nhiên trên RAM của `cinema-iam` mỗi khi start.
     -   *Hướng giải quyết*: Lưu trữ RSA KeyPair vào **HashiCorp Vault** để scale-out dễ dàng mà không bị lệch khóa.
 2.  **Khử Độc lập Lỗi (Circuit Breaker)**:
-    -   *Hiện trạng*: Các cuộc gọi Feign Client đồng bộ có rủi ro tạo nút thắt cổ chai.
-    -   *Hướng giải quyết*: Tích hợp **Resilience4j Circuit Breaker** tại Feign Clients để tự động ngắt kết nối và chạy fallback (ví dụ trả về giá trị cache) khi service mục tiêu bị nghẽn.
+    -   *Hiện trạng*: Đã tích hợp thành công **Resilience4j Circuit Breaker** tại `cinema-gateway` và `ShowtimeFeignAdapter` (gọi sang `cinema-scheduling`) để tránh thắt cổ chai và chạy fallback khi service bị nghẽn.
+    -   *Hướng giải quyết tiếp theo*: Áp dụng tương tự cho các Feign clients còn lại như `UserFeignAdapter` và `FacilityFeignAdapter` để nâng cao tính ổn định toàn hệ thống.
 3.  **Tối ưu hóa Khóa phân tán (Distributed Lock)**:
     -   *Hiện trạng*: Tự chế khóa bằng `StringRedisTemplate` chưa tự động gia hạn khi tác vụ kéo dài.
     -   *Hướng giải quyết*: Thay thế bằng thư viện chuyên dụng **Redisson** kết hợp Watchdog tự động gia hạn.
@@ -283,4 +293,5 @@ Hệ thống hỗ trợ thay đổi cấu hình CORS, danh sách đường dẫn
     -   *Hiện trạng*: Đang nhúng chung Camunda 7 vào JVM của `cinema-booking` (Embedded).
     -   *Hướng giải quyết*: Nâng cấp và tách Camunda thành service điều phối độc lập (Zeebe/Camunda 8) để tách tải khỏi logic xử lý đặt vé cốt lõi và tối ưu container scaling.
 5.  **Tối ưu hóa Bộ nhớ đệm Danh mục (Catalog Caching)**:
-    -   *Hướng giải quyết*: Áp dụng Cache-aside pattern với Redis cho `cinema-catalog` và `cinema-scheduling`. Đặt cơ chế Invalidation qua Kafka khi admin cập nhật dữ liệu.
+    -   *Hiện trạng*: Đã áp dụng thành công Cache-aside pattern với Redis thông qua các annotations `@Cacheable` (ở `cinema-catalog`, `cinema-scheduling`, `cinema-facility`) và giải phóng cache chủ động bằng `@CacheEvict` (ở `cinema-admin`) dùng chung Redis.
+    -   *Hướng giải quyết tiếp theo*: Tối ưu hóa cấu hình TTL (thời gian sống) của cache lên mức cao hơn ở môi trường production (ví dụ 10-15 phút) thay vì mức 5 giây như hiện tại ở môi trường dev để tối ưu hóa hiệu năng tối đa.

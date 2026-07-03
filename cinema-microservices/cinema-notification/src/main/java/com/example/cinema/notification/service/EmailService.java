@@ -1,6 +1,7 @@
 package com.example.cinema.notification.service;
 
 import jakarta.mail.internet.MimeMessage;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.ByteArrayResource;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
@@ -15,6 +16,9 @@ public class EmailService {
 
     private final JavaMailSender mailSender;
 
+    @Value("${app.mail.from:noreply@cinema.local}")
+    private String fromAddress;
+
     public void sendHtmlEmailWithAttachment(String to, String subject, String htmlContent, byte[] attachmentBytes, String attachmentName) {
         log.info("Preparing to send email to [{}] with subject [{}]", to, subject);
         try {
@@ -22,6 +26,7 @@ public class EmailService {
             MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
 
             helper.setTo(to);
+            helper.setFrom(fromAddress);
             helper.setSubject(subject);
             helper.setText(htmlContent, true);
             

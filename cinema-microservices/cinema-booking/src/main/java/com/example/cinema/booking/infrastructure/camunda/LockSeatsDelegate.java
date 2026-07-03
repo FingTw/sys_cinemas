@@ -23,9 +23,11 @@ public class LockSeatsDelegate implements JavaDelegate {
         String showtimeId = (String) execution.getVariable("showtimeId");
         List<String> seatIds = (List<String>) execution.getVariable("seatIds");
         String userId = (String) execution.getVariable("userId");
+        List<com.example.cinema.booking.application.dto.BookingItemRequest> items = 
+            (List<com.example.cinema.booking.application.dto.BookingItemRequest>) execution.getVariable("items");
 
         // Gọi method tạo đơn hàng PENDING và giữ ghế
-        BookingResponse booking = bookingService.createPendingBooking(showtimeId, seatIds, userId);
+        BookingResponse booking = bookingService.createPendingBooking(showtimeId, seatIds, items, userId);
 
         // Cập nhật businessKey của process instance thành bookingId để phục vụ correlate VNPay Callback
         execution.setProcessBusinessKey(booking.getId());

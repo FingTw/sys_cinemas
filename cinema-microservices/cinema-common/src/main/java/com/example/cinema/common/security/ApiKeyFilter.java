@@ -67,6 +67,7 @@ public class ApiKeyFilter extends OncePerRequestFilter {
                     || path.startsWith("/api/v1/featured-movies")
                     || path.startsWith("/api/v1/showtimes")
                     || path.startsWith("/api/v1/rooms")
+                    || path.startsWith("/api/v1/facilities")
                     || path.startsWith("/api/v1/vnpay")
                     || path.startsWith("/api/v1/public");
         }

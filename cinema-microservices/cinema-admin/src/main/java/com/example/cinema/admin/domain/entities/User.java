@@ -18,9 +18,10 @@ public class User {
     private Set<Role> roles = new HashSet<>();
     private Set<Permission> permissions = new HashSet<>();
     private boolean isBlocked;
+    private String cinemaId;
 
     @Builder
-    public User(String id, String username, String password, String email, Set<Role> roles, Set<Permission> permissions, boolean isBlocked) {
+    public User(String id, String username, String password, String email, Set<Role> roles, Set<Permission> permissions, boolean isBlocked, String cinemaId) {
         this.id = (id != null && !id.trim().isEmpty()) ? id : java.util.UUID.randomUUID().toString().replace("-", "");
         this.username = username;
         this.password = password;
@@ -28,6 +29,7 @@ public class User {
         this.roles = roles != null ? roles : new HashSet<>();
         this.permissions = permissions != null ? permissions : new HashSet<>();
         this.isBlocked = isBlocked;
+        this.cinemaId = cinemaId;
     }
 
     public void updateRoleAndPermissions(Set<Role> roles, Set<Permission> permissions) {
@@ -37,5 +39,9 @@ public class User {
 
     public void updateStatus(boolean isBlocked) {
         this.isBlocked = isBlocked;
+    }
+
+    public void updateWorkplace(String cinemaId) {
+        this.cinemaId = cinemaId;
     }
 }

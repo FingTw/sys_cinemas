@@ -101,11 +101,17 @@ public class AdminShowtimeUseCaseImpl implements AdminShowtimeUseCase {
     @Override
     public List<ShowtimeDTO> getAllShowtimes() {
         try {
-            return showtimeRepository.findAll().stream().map(st -> {
+            String staffCinemaId = com.example.cinema.admin.application.utils.SecurityUtils.getStaffCinemaId();
+            return showtimeRepository.findAll().stream().filter(st -> {
+                if (staffCinemaId == null) return true;
+                Room room = roomRepository.findById(st.getRoomId()).orElse(null);
+                return room != null && staffCinemaId.equals(room.getCinemaId());
+            }).map(st -> {
                 Movie movie = movieRepository.findById(st.getMovieId()).orElse(null);
                 Room room = roomRepository.findById(st.getRoomId()).orElse(null);
                 return convertToDTO(st, movie, room);
-            }).collect(Collectors.toList());
+            })
+            .collect(Collectors.toList());
         } catch (Exception e) {
             throw new ServerException("Failed to retrieve showtimes: " + e.getMessage(), e);
         }

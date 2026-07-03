@@ -39,6 +39,7 @@ public class AdminUserUseCaseImpl implements AdminUserUseCase {
     private final PasswordPolicyRepository passwordPolicyRepository;
     private final SystemSecurityConfigRepository systemSecurityConfigRepository;
     private final com.example.cinema.admin.infrastructure.database.repositories.AuthTokenRepository authTokenRepository;
+    private final CinemaRepository cinemaRepository;
 
     private final CachePort cachePort;
     private final JwtTokenProvider jwtTokenProvider;
@@ -84,6 +85,13 @@ public class AdminUserUseCaseImpl implements AdminUserUseCase {
                 .collect(Collectors.toSet());
         dto.setPermissions(String.join(",", effectivePermissions));
         dto.setOnline(isOnline);
+        
+        if (user.getCinemaId() != null && !user.getCinemaId().isEmpty()) {
+            dto.setCinemaId(user.getCinemaId());
+            cinemaRepository.findById(user.getCinemaId())
+                .ifPresent(cinema -> dto.setCinemaName(cinema.getName()));
+        }
+        
         return dto;
     }
 
@@ -228,6 +236,30 @@ public class AdminUserUseCaseImpl implements AdminUserUseCase {
         } catch (Exception e) {
             log.error("Database error while kicking user [{}]: {}", id, e.getMessage(), e);
             throw new ServerException("System error while kicking user: " + e.getMessage(), e);
+        }
+    }
+
+    @Override
+    @Transactional
+    public void assignWorkplace(String userId, String cinemaId) {
+        log.info("Assigning workplace Cinema ID [{}] to User ID [{}]", cinemaId, userId);
+        try {
+            User user = userRepository.findById(userId).orElseThrow(() -> new ClientException("User not found"));
+            if (cinemaId != null && !cinemaId.trim().isEmpty()) {
+                // Verify cinema exists
+                cinemaRepository.findById(cinemaId).orElseThrow(() -> new ClientException("Cinema not found"));
+                userRepository.updateWorkplace(userId, cinemaId);
+            } else {
+                userRepository.updateWorkplace(userId, null);
+            }
+            
+            invalidateToken(user);
+            log.info("User [{}] workplace updated successfully", user.getUsername());
+        } catch (ClientException e) {
+            throw e;
+        } catch (Exception e) {
+            log.error("Database error while assigning workplace for User [{}]: {}", userId, e.getMessage(), e);
+            throw new ServerException("System error while assigning workplace: " + e.getMessage(), e);
         }
     }
 
@@ -395,7 +427,7 @@ public class AdminUserUseCaseImpl implements AdminUserUseCase {
                         .id("default-security")
                         .clientKey("my-secret-dev-api-key")
                         .gatewayProtectedPaths("/api/v1/auth/login,/api/v1/auth/register,/api/v1/auth/public-key,/api/v1/auth/refresh-token,/api/v1/public")
-                        .serviceBypassPaths("/actuator,/v3/api-docs,/swagger-ui,/api/v1/auth/public-key,/api/v1/movies,/api/v1/showtimes,/api/v1/rooms,/api/v1/vnpay")
+                        .serviceBypassPaths("/actuator,/v3/api-docs,/swagger-ui,/api/v1/auth/public-key,/api/v1/movies,/api/v1/showtimes,/api/v1/rooms,/api/v1/facilities,/api/v1/vnpay")
                         .updatedAt(LocalDateTime.now())
                         .build());
     }

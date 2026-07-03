@@ -106,7 +106,7 @@ public class AuthServiceImpl implements AuthServicePort {
                 .collect(Collectors.toSet());
         String rolesStr = String.join(",", roleNames);
         String permissionsStr = String.join(",", effectivePermissions);
-        String accessToken = jwtTokenProvider.generateToken(user.getUsername(), user.getId(), rolesStr, permissionsStr);
+        String accessToken = jwtTokenProvider.generateToken(user.getUsername(), user.getId(), rolesStr, permissionsStr, user.getCinemaId());
         // 6. Blacklist token cũ nếu đang đăng nhập (lấy từ Redis thay vì DB)
         String prevToken = redisTemplate.opsForValue().get("valid_token:" + user.getId());
         if (prevToken != null && !prevToken.isEmpty()) {
@@ -214,7 +214,7 @@ public class AuthServiceImpl implements AuthServicePort {
 
         String rolesStr = String.join(",", roleNames);
         String permissionsStr = String.join(",", effectivePermissions);
-        String newAccessToken = jwtTokenProvider.generateToken(user.getUsername(), user.getId(), rolesStr, permissionsStr);
+        String newAccessToken = jwtTokenProvider.generateToken(user.getUsername(), user.getId(), rolesStr, permissionsStr, user.getCinemaId());
 
         // Không lưu access_token vào DB nữa, chỉ cập nhật Cache Redis
         redisTemplate.opsForValue().set("valid_token:" + user.getId(), newAccessToken);
@@ -387,7 +387,7 @@ public class AuthServiceImpl implements AuthServicePort {
                 .collect(Collectors.toSet());
         String rolesStr = String.join(",", roleNames);
         String permissionsStr = String.join(",", effectivePermissions);
-        String accessToken = jwtTokenProvider.generateToken(user.getUsername(), user.getId(), rolesStr, permissionsStr);
+        String accessToken = jwtTokenProvider.generateToken(user.getUsername(), user.getId(), rolesStr, permissionsStr, user.getCinemaId());
 
         String prevToken = redisTemplate.opsForValue().get("valid_token:" + user.getId());
         if (prevToken != null && !prevToken.isEmpty()) {

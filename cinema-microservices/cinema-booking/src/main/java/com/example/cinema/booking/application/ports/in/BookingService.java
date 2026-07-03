@@ -11,7 +11,7 @@ public interface BookingService {
     List<SeatStatusDTO> getSeatStatusesByShowtime(String showtimeId);
 
     // Camunda Helpers
-    BookingResponse createPendingBooking(String showtimeId, List<String> seatIds, String userId);
+    BookingResponse createPendingBooking(String showtimeId, List<String> seatIds, List<com.example.cinema.booking.application.dto.BookingItemRequest> items, String userId);
     void confirmBookingStatus(String bookingId, String transactionId);
     void cancelPendingBooking(String bookingId);
     void publishBookingConfirmedEvent(String bookingId);

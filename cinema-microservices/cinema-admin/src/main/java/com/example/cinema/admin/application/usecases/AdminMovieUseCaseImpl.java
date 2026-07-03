@@ -17,6 +17,9 @@ import java.util.List;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import com.example.cinema.admin.application.utils.SecurityUtils;
+import com.example.cinema.admin.domain.repositories.ShowtimeRepository;
+import com.example.cinema.admin.domain.repositories.RoomRepository;
 
 @Service
 @RequiredArgsConstructor
@@ -26,6 +29,8 @@ public class AdminMovieUseCaseImpl implements AdminMovieUseCase {
     private final MovieRepository movieRepository;
     private final GenreRepository genreRepository;
     private final ModelMapper modelMapper;
+    private final ShowtimeRepository showtimeRepository;
+    private final RoomRepository roomRepository;
 
     @Override
     @Caching(evict = {
@@ -63,6 +68,24 @@ public class AdminMovieUseCaseImpl implements AdminMovieUseCase {
     public List<MovieDTO> getAllMovies() {
         try {
             List<Movie> movies = movieRepository.findAll();
+            String staffCinemaId = SecurityUtils.getStaffCinemaId();
+            
+            if (staffCinemaId != null && !staffCinemaId.trim().isEmpty()) {
+                java.util.List<String> roomIds = roomRepository.findAll().stream()
+                        .filter(r -> staffCinemaId.equals(r.getCinemaId()))
+                        .map(r -> r.getId())
+                        .collect(Collectors.toList());
+                
+                java.util.Set<String> movieIds = showtimeRepository.findAll().stream()
+                        .filter(s -> roomIds.contains(s.getRoomId()))
+                        .map(s -> s.getMovieId())
+                        .collect(Collectors.toSet());
+                        
+                movies = movies.stream()
+                        .filter(m -> movieIds.contains(m.getId()))
+                        .collect(Collectors.toList());
+            }
+
             return movies.stream()
                     .map(this::convertToDTO)
                     .collect(Collectors.toList());

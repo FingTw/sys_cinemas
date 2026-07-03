@@ -41,6 +41,11 @@ public class UserRepositoryAdapter implements UserRepository {
                 .collect(Collectors.toList());
     }
 
+    @Override
+    public void updateWorkplace(String userId, String cinemaId) {
+        springDataUserRepository.updateWorkplace(userId, cinemaId);
+    }
+
     private User toDomain(UserJpaEntity entity) {
         return User.builder()
                 .id(entity.getId())
@@ -50,6 +55,7 @@ public class UserRepositoryAdapter implements UserRepository {
                 .roles(entity.getRoles().stream().map(this::toDomainRole).collect(Collectors.toSet()))
                 .permissions(entity.getPermissions().stream().map(this::toDomainPermission).collect(Collectors.toSet()))
                 .isBlocked(entity.isBlocked())
+                .cinemaId(entity.getCinemaId())
                 .build();
     }
 
@@ -62,6 +68,7 @@ public class UserRepositoryAdapter implements UserRepository {
                 .roles(domain.getRoles().stream().map(this::toEntityRole).collect(Collectors.toSet()))
                 .permissions(domain.getPermissions().stream().map(this::toEntityPermission).collect(Collectors.toSet()))
                 .isBlocked(domain.isBlocked())
+                .cinemaId(domain.getCinemaId())
                 .build();
     }
 

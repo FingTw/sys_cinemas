@@ -12,8 +12,8 @@ import org.springframework.stereotype.Component;
 public class CookieProperties {
 
     private boolean secure = false;
-    private String sameSite = "Strict";
-    private String domain = "localhost";
+    private String sameSite = "Lax";
+    private String domain = null;  // Không set domain cho localhost — Chrome từ chối domain=localhost
     private String accessTokenName = "ACCESS_TOKEN";
     private String refreshTokenName = "REFRESH_TOKEN";
     private String csrfTokenName = "XSRF-TOKEN";

@@ -93,6 +93,7 @@ public class PostgresUserAdapter implements UserRepository {
             .isBlocked(entity.isBlocked())
             .authProvider(entity.getAuthProvider())
             .ssoSubject(entity.getSsoSubject())
+            .cinemaId(entity.getCinemaId())
             .build();
     }
 
@@ -131,6 +132,7 @@ public class PostgresUserAdapter implements UserRepository {
         entity.setBlocked(user.isBlocked());
         entity.setAuthProvider(user.getAuthProvider());
         entity.setSsoSubject(user.getSsoSubject());
+        entity.setCinemaId(user.getCinemaId());
         return entity;
     }
 

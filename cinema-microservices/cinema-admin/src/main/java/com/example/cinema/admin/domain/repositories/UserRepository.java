@@ -8,4 +8,5 @@ public interface UserRepository {
     User save(User user);
     Optional<User> findById(String id);
     List<User> findAll();
+    void updateWorkplace(String userId, String cinemaId);
 }

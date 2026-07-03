@@ -50,6 +50,15 @@ public class CookieAuthReadFilter implements GlobalFilter, Ordered {
         HttpCookie accessTokenCookie = request.getCookies()
                 .getFirst(cookieProperties.getAccessTokenName());
 
+        if (request.getURI().getPath().contains("/auth/me")) {
+            log.info("[COOKIE-DEBUG] GET /auth/me cookies: {}", request.getCookies().keySet());
+            if (accessTokenCookie != null) {
+                log.info("[COOKIE-DEBUG] ACCESS_TOKEN found, length: {}", accessTokenCookie.getValue().length());
+            } else {
+                log.info("[COOKIE-DEBUG] ACCESS_TOKEN IS MISSING!");
+            }
+        }
+
         if (accessTokenCookie != null && !accessTokenCookie.getValue().isEmpty()) {
             String jwt = accessTokenCookie.getValue();
 

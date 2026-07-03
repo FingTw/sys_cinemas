@@ -19,4 +19,7 @@ public class AdminUserDTO {
 
     @JsonProperty("isOnline")
     private boolean isOnline;
+
+    private String cinemaId;
+    private String cinemaName;
 }

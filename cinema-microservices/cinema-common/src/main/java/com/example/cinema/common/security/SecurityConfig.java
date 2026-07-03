@@ -74,6 +74,7 @@ public class SecurityConfig {
                         .permitAll()
                         .requestMatchers("/api/v1/movies/**", "/api/v1/featured-movies/**", "/api/v1/public/**").permitAll() // Xem danh sach phim cong khai, promotions, services
                         .requestMatchers("/api/v1/showtimes/**").permitAll() // Xem suat chieu cong khai
+                        .requestMatchers("/api/v1/facilities/**").permitAll() // Xem cum rap, rap cong khai
                         .requestMatchers(HttpMethod.GET, "/api/v1/rooms/**").permitAll()
                         .requestMatchers("/api/v1/vnpay/**").permitAll() // VNPay Callback
                         .requestMatchers("/error").permitAll()

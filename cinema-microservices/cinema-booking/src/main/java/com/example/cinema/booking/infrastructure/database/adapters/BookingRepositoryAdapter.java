@@ -23,10 +23,28 @@ public class BookingRepositoryAdapter implements BookingRepository {
 
     @Override
     public Booking save(Booking booking) {
-        BookingJpaEntity entity = toEntity(booking);
-        if (entity.getSeats() != null) {
-            entity.getSeats().forEach(s -> s.setBooking(entity));
+        BookingJpaEntity entity;
+        if (booking.getId() != null) {
+            Optional<BookingJpaEntity> existingOpt = springDataBookingRepository.findById(booking.getId());
+            if (existingOpt.isPresent()) {
+                entity = existingOpt.get();
+                // Update scalar fields only. (Usually status and paymentTransactionId change after creation)
+                entity.setStatus(booking.getStatus());
+                entity.setPaymentTransactionId(booking.getPaymentTransactionId());
+                // We do not replace seats and items here to avoid Hibernate orphan removal exception.
+            } else {
+                entity = toEntity(booking);
+                if (entity.getSeats() != null) {
+                    entity.getSeats().forEach(s -> s.setBooking(entity));
+                }
+            }
+        } else {
+            entity = toEntity(booking);
+            if (entity.getSeats() != null) {
+                entity.getSeats().forEach(s -> s.setBooking(entity));
+            }
         }
+        
         BookingJpaEntity saved = springDataBookingRepository.save(entity);
         return toDomain(saved);
     }

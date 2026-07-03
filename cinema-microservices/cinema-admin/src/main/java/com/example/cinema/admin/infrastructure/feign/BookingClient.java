@@ -13,6 +13,6 @@ import java.util.Optional;
 @FeignClient(name = "cinema-booking", url = "${app.services.booking.url}")
 public interface BookingClient {
 
-    @GetMapping("/api/internal/bookings/{bookingId}")
+    @GetMapping("/api/v1/internal/bookings/{bookingId}")
     Optional<BookingDetailResponse> getBookingById(@PathVariable("bookingId") String bookingId);
 }

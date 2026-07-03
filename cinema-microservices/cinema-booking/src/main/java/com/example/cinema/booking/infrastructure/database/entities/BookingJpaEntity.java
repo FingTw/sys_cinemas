@@ -51,10 +51,13 @@ public class BookingJpaEntity {
     @OneToMany(mappedBy = "booking", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<BookingSeatJpaEntity> seats;
 
+    @OneToMany(mappedBy = "booking", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<BookingItemJpaEntity> items;
+
     public BookingJpaEntity() {
     }
 
-    public BookingJpaEntity(String id, String userId, String showtimeId, BigDecimal totalPrice, String status, LocalDateTime expiresAt, String paymentTransactionId, LocalDateTime createdAt, List<BookingSeatJpaEntity> seats) {
+    public BookingJpaEntity(String id, String userId, String showtimeId, BigDecimal totalPrice, String status, LocalDateTime expiresAt, String paymentTransactionId, LocalDateTime createdAt, List<BookingSeatJpaEntity> seats, List<BookingItemJpaEntity> items) {
         this.id = id;
         this.userId = userId;
         this.showtimeId = showtimeId;
@@ -64,6 +67,7 @@ public class BookingJpaEntity {
         this.paymentTransactionId = paymentTransactionId;
         this.createdAt = createdAt;
         this.seats = seats;
+        this.items = items;
     }
 
     // Builder manual
@@ -81,6 +85,7 @@ public class BookingJpaEntity {
         private String paymentTransactionId;
         private LocalDateTime createdAt;
         private List<BookingSeatJpaEntity> seats;
+        private List<BookingItemJpaEntity> items;
 
         public BookingJpaEntityBuilder id(String id) {
             this.id = id;
@@ -127,8 +132,13 @@ public class BookingJpaEntity {
             return this;
         }
 
+        public BookingJpaEntityBuilder items(List<BookingItemJpaEntity> items) {
+            this.items = items;
+            return this;
+        }
+
         public BookingJpaEntity build() {
-            return new BookingJpaEntity(id, userId, showtimeId, totalPrice, status, expiresAt, paymentTransactionId, createdAt, seats);
+            return new BookingJpaEntity(id, userId, showtimeId, totalPrice, status, expiresAt, paymentTransactionId, createdAt, seats, items);
         }
     }
 }

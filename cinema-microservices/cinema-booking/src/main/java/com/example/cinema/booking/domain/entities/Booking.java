@@ -18,11 +18,12 @@ public class Booking {
     private String paymentTransactionId;
     private LocalDateTime createdAt;
     private List<BookingSeat> seats;
+    private List<BookingItem> items;
 
     protected Booking() {} // Cho ORM (MyBatis/JDBC)
 
     @Builder
-    public Booking(String id, String userId, String showtimeId, BigDecimal totalPrice, String status, LocalDateTime expiresAt, String paymentTransactionId, LocalDateTime createdAt, List<BookingSeat> seats) {
+    public Booking(String id, String userId, String showtimeId, BigDecimal totalPrice, String status, LocalDateTime expiresAt, String paymentTransactionId, LocalDateTime createdAt, List<BookingSeat> seats, List<BookingItem> items) {
         this.id = (id != null && !id.trim().isEmpty()) ? id : java.util.UUID.randomUUID().toString();
         this.userId = userId;
         this.showtimeId = showtimeId;
@@ -32,19 +33,30 @@ public class Booking {
         this.paymentTransactionId = paymentTransactionId;
         this.createdAt = createdAt;
         this.seats = seats;
+        this.items = items;
     }
 
     // --- DOMAIN BEHAVIORS ---
 
     /** Factory method khởi tạo Booking mới */
-    public static Booking create(String userId, String showtimeId, List<BookingSeat> seats, int expirationMinutes) {
-        if (seats == null || seats.isEmpty()) {
-            throw new ClientException("Danh sách ghế không được để trống!");
+    public static Booking create(String userId, String showtimeId, List<BookingSeat> seats, List<BookingItem> items, int expirationMinutes) {
+        if ((seats == null || seats.isEmpty()) && (items == null || items.isEmpty())) {
+            throw new ClientException("Phải chọn ít nhất ghế hoặc sản phẩm.");
         }
         
-        BigDecimal total = seats.stream()
+        BigDecimal total = BigDecimal.ZERO;
+        
+        if (seats != null) {
+            total = total.add(seats.stream()
                 .map(BookingSeat::getPrice)
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
+                .reduce(BigDecimal.ZERO, BigDecimal::add));
+        }
+        
+        if (items != null) {
+            total = total.add(items.stream()
+                .map(BookingItem::getTotalPrice)
+                .reduce(BigDecimal.ZERO, BigDecimal::add));
+        }
 
         return Booking.builder()
                 .userId(userId)
@@ -54,6 +66,7 @@ public class Booking {
                 .createdAt(LocalDateTime.now())
                 .expiresAt(LocalDateTime.now().plusMinutes(expirationMinutes))
                 .seats(seats)
+                .items(items)
                 .build();
     }
 

@@ -42,7 +42,7 @@ spring:
         - id: catalog-service
           uri: "${CATALOG_SERVICE_URL}"
           predicates:
-            - Path=/api/v1/movies/**, /api/v1/public/promotions, /api/v1/public/services
+            - Path=/api/v1/movies/**, /api/v1/public/promotions, /api/v1/public/services, /api/v1/public/products/**
 
         # Facility Service
         - id: facility-service
@@ -101,6 +101,9 @@ management:
   tracing:
     sampling:
       probability: 1.0
+  otlp:
+    tracing:
+      endpoint: ${OTEL_EXPORTER_OTLP_ENDPOINT:http://localhost:4318/v1/traces}
 
 # ─────────────────────────────────────────────────────────────
 # HttpOnly Cookie Session Configuration
@@ -108,12 +111,12 @@ management:
 cinema:
   cookie:
     secure: ${COOKIE_SECURE:false}
-    same-site: Strict
-    domain: ${COOKIE_DOMAIN:localhost}
+    same-site: Lax           # Lax cho phep cookie gui kem khi redirect tu VNPay (GET redirect)
+    # domain: KHONG set domain de Chrome tu su dung domain hien tai (localhost)
     access-token-name: ACCESS_TOKEN
     refresh-token-name: REFRESH_TOKEN
     csrf-token-name: XSRF-TOKEN
-    access-token-max-age: 3600       # 1 hour (should match JWT TTL)
+    access-token-max-age: 1800       # 30 phut, khop voi JWT_EXPIRATION_MS=1800000
     refresh-token-max-age: 2592000   # 30 days
 
 resilience4j:

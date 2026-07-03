@@ -43,6 +43,7 @@ public class BookingController {
         Map<String, Object> variables = new HashMap<>();
         variables.put("showtimeId", request.getShowtimeId());
         variables.put("seatIds", request.getSeatIds());
+        variables.put("items", request.getItems());
         variables.put("userId", userId);
         variables.put("ipAddress", ipAddress);
         

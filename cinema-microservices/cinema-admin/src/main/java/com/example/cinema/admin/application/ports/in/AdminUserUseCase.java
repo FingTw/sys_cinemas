@@ -20,6 +20,7 @@ public interface AdminUserUseCase {
     void changeRole(String id, String rolesString);
     void blockUser(String id);
     void kickUser(String id);
+    void assignWorkplace(String userId, String cinemaId);
     List<Permission> getAllPermissions();
 
     List<RoleDTO> getAllRoles();

@@ -60,6 +60,15 @@ public class AdminUserController {
     }
 
     @PreAuthorize("hasAuthority('USER_MANAGE')")
+    @PutMapping("/{id}/workplace")
+    public ResponseEntity<?> assignWorkplace(@PathVariable String id, @RequestBody Map<String, String> body) {
+        String cinemaId = body.get("cinemaId");
+        log.info("Admin assigning workplace [{}] to User [{}]", cinemaId, id);
+        adminUserUseCase.assignWorkplace(id, cinemaId);
+        return ResponseEntity.ok(Map.of("message", "Workplace assigned successfully"));
+    }
+
+    @PreAuthorize("hasAuthority('USER_MANAGE')")
     @GetMapping("/permissions")
     public ResponseEntity<?> getAllPermissions() {
         log.info("Admin requested to fetch all available permissions");
