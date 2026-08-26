@@ -1,0 +1,212 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<jasperReport xmlns="http://jasperreports.sourceforge.net/jasperreports" 
+              xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" 
+              xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports http://jasperreports.sourceforge.net/xsd/jasperreport.xsd"
+              name="booking_ticket" language="java"
+              pageWidth="595" pageHeight="842"
+              columnWidth="555"
+              leftMargin="20" rightMargin="20"
+              topMargin="20" bottomMargin="20">
+
+    <property name="com.jaspersoft.studio.data.defaultdataadapter" value="One Empty Record"/>
+
+    <style name="Title"        fontName="DejaVu Sans" fontSize="22" isBold="true" forecolor="#FFFFFF"/>
+    <style name="SubTitle"     fontName="DejaVu Sans" fontSize="12" forecolor="#94A3B8"/>
+    <style name="SectionTitle" fontName="DejaVu Sans" fontSize="11" isBold="true" forecolor="#FFFFFF"/>
+    <style name="Label"        fontName="DejaVu Sans" fontSize="10" isBold="true" forecolor="#94A3B8"/>
+    <style name="Value"        fontName="DejaVu Sans" fontSize="10" forecolor="#F8FAFC"/>
+    <style name="MoneyValue"   fontName="DejaVu Sans" fontSize="10" isBold="true" forecolor="#7C3AED"/>
+    <style name="SmallText"    fontName="DejaVu Sans" fontSize="9"  isItalic="true" forecolor="#94A3B8"/>
+    <style name="QRCaption"    fontName="DejaVu Sans" fontSize="12" isBold="true" forecolor="#FFFFFF"/>
+
+    <parameter name="bookingId"   class="java.lang.String"/>
+    <parameter name="cinemaName"  class="java.lang.String"/>
+    <parameter name="exportedBy"  class="java.lang.String"/>
+    <parameter name="qrCodeImage" class="java.io.InputStream"/>
+
+    <field name="bookingId"  class="java.lang.String"/>
+    <field name="userId"     class="java.lang.String"/>
+    <field name="showtimeId" class="java.lang.String"/>
+    <field name="totalPrice" class="java.math.BigDecimal"/>
+    <field name="status"     class="java.lang.String"/>
+    <field name="seatIds"    class="java.lang.String"/>
+    <field name="createdAt"  class="java.lang.String"/>
+    <field name="expiresAt"  class="java.lang.String"/>
+
+    <background>
+        <band height="802" splitType="Stretch">
+            <rectangle>
+                <reportElement x="0" y="0" width="555" height="802" backcolor="#1E1E24">
+                    <property name="com.jaspersoft.studio.unit.width" value="px"/>
+                    <property name="com.jaspersoft.studio.unit.height" value="px"/>
+                </reportElement>
+                <graphicElement>
+                    <pen lineWidth="0.0"/>
+                </graphicElement>
+            </rectangle>
+        </band>
+    </background>
+
+    <title>
+        <band height="65" splitType="Stretch">
+            <staticText>
+                <reportElement x="0" y="5" width="555" height="35" style="Title"/>
+                <textElement textAlignment="Center" verticalAlignment="Middle"/>
+                <text><![CDATA[VE DAT CHO]]></text>
+            </staticText>
+            <textField>
+                <reportElement x="0" y="42" width="555" height="20" style="SubTitle"/>
+                <textElement textAlignment="Center"/>
+                <textFieldExpression><![CDATA[$P{cinemaName}]]></textFieldExpression>
+            </textField>
+        </band>
+    </title>
+
+    <pageHeader>
+        <band splitType="Stretch"/>
+    </pageHeader>
+
+    <columnHeader>
+        <band height="115" splitType="Stretch">
+            <line>
+                <reportElement x="0" y="2" width="555" height="1">
+                    <property name="local_mesure_unitheight" value="pixel"/>
+                    <property name="com.jaspersoft.studio.unit.height" value="px"/>
+                </reportElement>
+                <graphicElement>
+                    <pen lineWidth="1.5" lineColor="#7C3AED"/>
+                </graphicElement>
+            </line>
+            <componentElement>
+                <reportElement x="0" y="8" width="555" height="75"/>
+                <jr:barbecue xmlns:jr="http://jasperreports.sourceforge.net/jasperreports/components" 
+                             xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports/components http://jasperreports.sourceforge.net/xsd/components.xsd" 
+                             type="Code128" drawText="false" checksumRequired="false">
+                    <jr:codeExpression><![CDATA[$P{bookingId}]]></jr:codeExpression>
+                </jr:barbecue>
+            </componentElement>
+            <textField>
+                <reportElement x="0" y="86" width="555" height="18" style="SmallText"/>
+                <textElement textAlignment="Center"/>
+                <textFieldExpression><![CDATA["Ma dat cho: " + $P{bookingId}]]></textFieldExpression>
+            </textField>
+            <line>
+                <reportElement x="0" y="112" width="555" height="1"/>
+                <graphicElement>
+                    <pen lineWidth="1.5" lineColor="#7C3AED"/>
+                </graphicElement>
+            </line>
+        </band>
+    </columnHeader>
+
+    <detail>
+        <band height="230" splitType="Stretch">
+            <staticText>
+                <reportElement x="0" y="8" width="555" height="20" style="SectionTitle"/>
+                <text><![CDATA[Thong tin dat cho]]></text>
+            </staticText>
+            <line>
+                <reportElement x="0" y="31" width="555" height="1"/>
+                <graphicElement>
+                    <pen lineWidth="1.0" lineStyle="Dashed" lineColor="#7C3AED"/>
+                </graphicElement>
+            </line>
+            <staticText>
+                <reportElement x="0" y="40" width="160" height="25" style="Label"/>
+                <text><![CDATA[Ma dat cho:]]></text>
+            </staticText>
+            <textField>
+                <reportElement x="165" y="40" width="390" height="25" style="Value"/>
+                <textFieldExpression><![CDATA[$F{bookingId}]]></textFieldExpression>
+            </textField>
+            <staticText>
+                <reportElement x="0" y="72" width="160" height="25" style="Label"/>
+                <text><![CDATA[So ghe:]]></text>
+            </staticText>
+            <textField>
+                <reportElement x="165" y="72" width="390" height="25" style="Value"/>
+                <textFieldExpression><![CDATA[$F{seatIds}]]></textFieldExpression>
+            </textField>
+            <staticText>
+                <reportElement x="0" y="104" width="160" height="25" style="Label"/>
+                <text><![CDATA[Suat chieu (ID):]]></text>
+            </staticText>
+            <textField>
+                <reportElement x="165" y="104" width="390" height="25" style="Value"/>
+                <textFieldExpression><![CDATA[$F{showtimeId}]]></textFieldExpression>
+            </textField>
+            <staticText>
+                <reportElement x="0" y="136" width="160" height="25" style="Label"/>
+                <text><![CDATA[Tong tien:]]></text>
+            </staticText>
+            <textField pattern="#,### VND">
+                <reportElement x="165" y="136" width="390" height="25" style="MoneyValue"/>
+                <textFieldExpression><![CDATA[$F{totalPrice}]]></textFieldExpression>
+            </textField>
+            <staticText>
+                <reportElement x="0" y="168" width="160" height="25" style="Label"/>
+                <text><![CDATA[Trang thai:]]></text>
+            </staticText>
+            <textField>
+                <reportElement x="165" y="168" width="390" height="25" style="Value"/>
+                <textFieldExpression><![CDATA[$F{status}]]></textFieldExpression>
+            </textField>
+            <staticText>
+                <reportElement x="0" y="200" width="160" height="25" style="Label"/>
+                <text><![CDATA[Han ve:]]></text>
+            </staticText>
+            <textField>
+                <reportElement x="165" y="200" width="390" height="25" style="Value"/>
+                <textFieldExpression><![CDATA[$F{expiresAt}]]></textFieldExpression>
+            </textField>
+        </band>
+    </detail>
+
+    <columnFooter>
+        <band splitType="Stretch"/>
+    </columnFooter>
+
+    <pageFooter>
+        <band height="20" splitType="Stretch">
+            <textField pattern="dd/MM/yyyy HH:mm">
+                <reportElement x="0" y="0" width="200" height="20" style="SmallText"/>
+                <textFieldExpression><![CDATA[new java.util.Date()]]></textFieldExpression>
+            </textField>
+            <textField>
+                <reportElement x="433" y="0" width="80" height="20" style="SmallText"/>
+                <textElement textAlignment="Right"/>
+                <textFieldExpression><![CDATA["Trang " + $V{PAGE_NUMBER} + " /"]]></textFieldExpression>
+            </textField>
+            <textField evaluationTime="Report">
+                <reportElement x="513" y="0" width="42" height="20" style="SmallText"/>
+                <textFieldExpression><![CDATA[" " + $V{PAGE_NUMBER}]]></textFieldExpression>
+            </textField>
+        </band>
+    </pageFooter>
+
+    <summary>
+        <band height="320" splitType="Stretch">
+            <line>
+                <reportElement x="0" y="5" width="555" height="1"/>
+                <graphicElement>
+                    <pen lineWidth="1.5" lineColor="#7C3AED"/>
+                </graphicElement>
+            </line>
+            <staticText>
+                <reportElement x="0" y="15" width="555" height="22" style="QRCaption"/>
+                <textElement textAlignment="Center" verticalAlignment="Middle"/>
+                <text><![CDATA[Quet ma QR de xac thuc ve tai quay]]></text>
+            </staticText>
+            <image scaleImage="RetainShape" hAlign="Center">
+                <reportElement x="152" y="42" width="250" height="250"/>
+                <imageExpression><![CDATA[$P{qrCodeImage}]]></imageExpression>
+            </image>
+            <textField>
+                <reportElement x="0" y="298" width="555" height="18" style="SmallText"/>
+                <textElement textAlignment="Center"/>
+                <textFieldExpression><![CDATA["Han su dung: " + $F{expiresAt}]]></textFieldExpression>
+            </textField>
+        </band>
+    </summary>
+
+</jasperReport>

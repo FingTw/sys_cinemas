@@ -41,7 +41,7 @@ public class DynamicCorsConfiguration {
     public void init() {
         // Default config fallback
         CorsConfiguration defaultCfg = new CorsConfiguration();
-        defaultCfg.addAllowedOrigin("*");
+        defaultCfg.addAllowedOriginPattern("*");
         defaultCfg.addAllowedMethod("*");
         defaultCfg.addAllowedHeader("*");
         defaultCfg.setAllowCredentials(true);

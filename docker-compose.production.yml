@@ -1,0 +1,149 @@
+# docker-compose.production.yml
+# Dùng trên VPS: docker compose -f docker-compose.production.yml up -d
+# Khác với docker-compose.yml (dev): thay 'build' bằng 'image' pull từ Docker Hub
+
+services:
+  # ─── Infrastructure (giống dev, không thay đổi) ────────────────
+  cinema-db:
+    image: postgres:16
+    container_name: cinema-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${DB_USERNAME}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: cinema_db
+    volumes:
+      - cinema_data:/var/lib/postgresql/data
+      - ./init-databases.sql:/docker-entrypoint-initdb.d/init-databases.sql
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U postgres" ]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - cinema-network
+    mem_limit: 512m
+
+  cinema-redis:
+    image: redis:7-alpine
+    container_name: cinema-redis
+    restart: unless-stopped
+    networks:
+      - cinema-network
+    mem_limit: 256m
+
+  cinema-keycloak:
+    image: quay.io/keycloak/keycloak:26.2.5
+    container_name: cinema-keycloak
+    restart: unless-stopped
+    command: start-dev
+    env_file: .env
+    environment:
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://cinema-db:5432/cinema_db
+    depends_on:
+      cinema-db:
+        condition: service_healthy
+    networks:
+      - cinema-network
+    mem_limit: 768m
+
+  # ─── Application services: dùng image từ Docker Hub ────────────
+  # CI/CD sẽ tự động cập nhật các image này
+  cinema-gateway:
+    image: ${DOCKERHUB_USERNAME}/cinema-gateway:latest  # ← pull từ Hub, không build
+    container_name: cinema-gateway
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    env_file: .env
+    environment:
+      AUTH_SERVICE_URL: http://auth-service:8081
+      BOOKING_SERVICE_URL: http://booking-service:8085
+      MANAGEMENT_SERVICE_URL: http://management-service:8086
+      REDIS_HOST: cinema-redis
+      JAVA_OPTS: "-Xms64m -Xmx128m"
+    networks:
+      - cinema-network
+    mem_limit: 256m
+    depends_on:
+      - cinema-redis
+    healthcheck:
+      test: [ "CMD-SHELL", "wget -qO- http://localhost:8080/actuator/health || exit 1" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  auth-service:
+    image: ${DOCKERHUB_USERNAME}/auth-service:latest
+    container_name: auth-service
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      DB_HOST: cinema-db
+      REDIS_HOST: cinema-redis
+      JAVA_OPTS: "-Xms128m -Xmx256m"
+    depends_on:
+      cinema-db:
+        condition: service_healthy
+    networks:
+      - cinema-network
+    mem_limit: 384m
+    healthcheck:
+      test: [ "CMD-SHELL", "wget -qO- http://localhost:8081/actuator/health || exit 1" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  booking-service:
+    image: ${DOCKERHUB_USERNAME}/booking-service:latest
+    container_name: booking-service
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      DB_HOST: cinema-db
+      REDIS_HOST: cinema-redis
+      JAVA_OPTS: "-Xms128m -Xmx256m"
+    depends_on:
+      cinema-db:
+        condition: service_healthy
+    networks:
+      - cinema-network
+    mem_limit: 384m
+    healthcheck:
+      test: [ "CMD-SHELL", "wget -qO- http://localhost:8085/actuator/health || exit 1" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  management-service:
+    image: ${DOCKERHUB_USERNAME}/management-service:latest
+    container_name: management-service
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      DB_HOST: cinema-db
+      REDIS_HOST: cinema-redis
+      JAVA_OPTS: "-Xms128m -Xmx256m"
+    depends_on:
+      cinema-db:
+        condition: service_healthy
+    networks:
+      - cinema-network
+    mem_limit: 384m
+    healthcheck:
+      test: [ "CMD-SHELL", "wget -qO- http://localhost:8086/actuator/health || exit 1" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+volumes:
+  cinema_data:
+
+networks:
+  cinema-network:
+    driver: bridge

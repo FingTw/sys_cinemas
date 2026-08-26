@@ -22,16 +22,12 @@
 	</properties>
 
 	<modules>
-		<module>cinema-common</module>
-		<module>cinema-gateway</module>
-		<module>cinema-iam</module>
-		<module>cinema-catalog</module>
-		<module>cinema-facility</module>
-		<module>cinema-scheduling</module>
-		<module>cinema-booking</module>
-		<module>cinema-notification</module>
-		<module>cinema-admin</module>
-	</modules>
+        <module>cinema-common</module>
+        <module>cinema-gateway</module>
+        <module>auth-service</module>
+        <module>booking-service</module>
+        <module>management-service</module>
+    </modules>
 
 	<dependencyManagement>
 		<dependencies>

@@ -14,6 +14,7 @@ import org.springframework.security.config.annotation.web.configurers.AbstractHt
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
+
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.web.cors.CorsConfiguration;
@@ -23,11 +24,6 @@ import com.example.cinema.common.filter.AesDecryptionFilter;
 import com.example.cinema.common.filter.AesEncryptionResponseFilter;
 import com.example.cinema.common.filter.IdempotencyFilter;
 import com.example.cinema.common.filter.XApiKeyFilter;
-import com.example.cinema.common.filter.LoggingFilter;
-import com.example.cinema.common.security.ApiKeyFilter;
-import com.example.cinema.common.security.JwtAuthenticationFilter;
-import com.example.cinema.common.security.SecurityPermissions;
-import com.example.cinema.common.security.SecurityRoles;
 
 @Configuration
 @EnableWebSecurity
@@ -35,22 +31,19 @@ import com.example.cinema.common.security.SecurityRoles;
 @EnableAspectJAutoProxy
 public class SecurityConfig {
 
-    private final JwtAuthenticationFilter jwtAuthenticationFilter;
-    private final ApiKeyFilter apiKeyFilter;
     private final AesDecryptionFilter aesDecryptionFilter;
     private final AesEncryptionResponseFilter aesEncryptionResponseFilter;
     private final IdempotencyFilter idempotencyFilter;
     private final XApiKeyFilter xApiKeyFilter;
+    private final HeaderPermissionFilter headerPermissionFilter;
 
-    public SecurityConfig(JwtAuthenticationFilter jwtAuthenticationFilter, ApiKeyFilter apiKeyFilter,
-                          AesDecryptionFilter aesDecryptionFilter, AesEncryptionResponseFilter aesEncryptionResponseFilter,
-                          IdempotencyFilter idempotencyFilter, XApiKeyFilter xApiKeyFilter) {
-        this.jwtAuthenticationFilter = jwtAuthenticationFilter;
-        this.apiKeyFilter = apiKeyFilter;
+    public SecurityConfig(AesDecryptionFilter aesDecryptionFilter, AesEncryptionResponseFilter aesEncryptionResponseFilter,
+                          IdempotencyFilter idempotencyFilter, XApiKeyFilter xApiKeyFilter, HeaderPermissionFilter headerPermissionFilter) {
         this.aesDecryptionFilter = aesDecryptionFilter;
         this.aesEncryptionResponseFilter = aesEncryptionResponseFilter;
         this.idempotencyFilter = idempotencyFilter;
         this.xApiKeyFilter = xApiKeyFilter;
+        this.headerPermissionFilter = headerPermissionFilter;
     }
 
     @Value("${app.security.cors.allowed-origins}")
@@ -65,7 +58,9 @@ public class SecurityConfig {
                 .csrf(AbstractHttpConfigurer::disable)
                 // 3. Phan quyen Endpoint
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/api/v1/auth/login", "/api/v1/auth/register", "/api/v1/auth/public-key",
+                        // Actuator health/info: public cho Docker healthcheck
+                        .requestMatchers("/actuator/health", "/actuator/info").permitAll()
+                        .requestMatchers("/api/v1/auth/login", "/api/v1/auth/callback", "/api/v1/auth/register", "/api/v1/auth/public-key",
                                 "/api/v1/auth/refresh-token", "/api/v1/auth/password-policy",
                                 "/api/v1/auth/sso/token",          // Keycloak Standalone SSO Token
                                 "/api/v1/auth/check-username",     // Kiem tra ton tai username (dang ky)
@@ -77,7 +72,7 @@ public class SecurityConfig {
                         .requestMatchers("/api/v1/facilities/**").permitAll() // Xem cum rap, rap cong khai
                         .requestMatchers(HttpMethod.GET, "/api/v1/rooms/**").permitAll()
                         .requestMatchers("/api/v1/vnpay/**").permitAll() // VNPay Callback
-                        .requestMatchers("/error").permitAll()
+                        .requestMatchers(new org.springframework.security.web.util.matcher.AntPathRequestMatcher("/error"), new org.springframework.security.web.util.matcher.AntPathRequestMatcher("/ws/**")).permitAll()
                         .requestMatchers("/api/v1/auth/me", "/api/v1/auth/logout").authenticated()
                         // User Management
                         .requestMatchers(HttpMethod.GET, "/api/v1/admin/users/**")
@@ -129,16 +124,21 @@ public class SecurityConfig {
                 )
                 // 4. Co che Stateless
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .headers(headers -> headers.frameOptions(org.springframework.security.config.annotation.web.configurers.HeadersConfigurer.FrameOptionsConfig::disable))
+                .exceptionHandling(ex -> ex
+                        .authenticationEntryPoint((request, response, authException) -> {
+                            response.sendError(jakarta.servlet.http.HttpServletResponse.SC_UNAUTHORIZED, "Unauthorized");
+                        })
+                )
                 // 5. Them filter xac thuc & bao mat
                 .addFilterBefore(idempotencyFilter, UsernamePasswordAuthenticationFilter.class)
                 .addFilterBefore(xApiKeyFilter, UsernamePasswordAuthenticationFilter.class)
                 .addFilterBefore(aesDecryptionFilter, UsernamePasswordAuthenticationFilter.class)
-                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
-                .addFilterAfter(aesEncryptionResponseFilter, UsernamePasswordAuthenticationFilter.class);
+                .addFilterAfter(aesEncryptionResponseFilter, UsernamePasswordAuthenticationFilter.class)
+                .addFilterBefore(headerPermissionFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }
-
     // Dinh nghia chi tiet luat CORS
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
@@ -156,8 +156,4 @@ public class SecurityConfig {
         return source;
     }
 
-    @Bean
-    public PasswordEncoder passwordEncoder() {
-        return new BCryptPasswordEncoder();
-    }
 }

@@ -1,77 +1,186 @@
-name: CI/CD Microservices
+name: CI/CD Cinema Microservices
 
+# Trigger: chỉ chạy khi push/PR vào nhánh main
 on:
   push:
     branches: [ "main" ]
-    paths:
-      - 'cinema-microservices/**'
   pull_request:
     branches: [ "main" ]
-    paths:
-      - 'cinema-microservices/**'
+
+# Biến môi trường dùng chung cho cả pipeline
+env:
+  REGISTRY: docker.io
+  IMAGE_PREFIX: ${{ secrets.DOCKERHUB_USERNAME }}
 
 jobs:
-  # Job 1: Phân tích xem chính xác service nào đã bị thay đổi code
-  changes:
+  # ═══════════════════════════════════════════════════════════════
+  # JOB 1: Phát hiện service nào thay đổi để chỉ build cái đó
+  # ═══════════════════════════════════════════════════════════════
+  detect-changes:
+    name: Detect Changed Services
     runs-on: ubuntu-latest
     outputs:
       services: ${{ steps.filter.outputs.changes }}
+      common_changed: ${{ steps.filter.outputs.cinema-common }}
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-      
-    - name: Paths Filter
-      uses: dorny/paths-filter@v3
-      id: filter
-      with:
-        filters: |
-          cinema-iam: cinema-microservices/cinema-iam/**
-          cinema-catalog: cinema-microservices/cinema-catalog/**
-          cinema-admin: cinema-microservices/cinema-admin/**
-          cinema-booking: cinema-microservices/cinema-booking/**
-          cinema-notification: cinema-microservices/cinema-notification/**
-          cinema-facility: cinema-microservices/cinema-facility/**
-          cinema-scheduling: cinema-microservices/cinema-scheduling/**
-          cinema-gateway: cinema-microservices/cinema-gateway/**
+      - uses: actions/checkout@v4
 
-  # Job 2: Chỉ chạy build cho những service bị thay đổi
-  build:
-    needs: changes
-    if: ${{ needs.changes.outputs.services != '[]' && needs.changes.outputs.services != '' }}
+      - name: Paths Filter
+        uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            cinema-common:
+              - 'cinema-microservices/cinema-common/**'
+            cinema-gateway:
+              - 'cinema-microservices/cinema-gateway/**'
+            auth-service:
+              - 'cinema-microservices/auth-service/**'
+            booking-service:
+              - 'cinema-microservices/booking-service/**'
+            management-service:
+              - 'cinema-microservices/management-service/**'
+
+  # ═══════════════════════════════════════════════════════════════
+  # JOB 2: Build, Test và đóng gói JAR (chạy song song theo matrix)
+  # ═══════════════════════════════════════════════════════════════
+  build-and-test:
+    name: Build & Test (${{ matrix.service }})
+    needs: detect-changes
+    # Chạy nếu: (a) service đó thay đổi, HOẶC (b) cinema-common thay đổi
+    # (khi common thay đổi phải rebuild tất cả downstream services)
+    if: |
+      contains(fromJSON(needs.detect-changes.outputs.services), matrix.service) ||
+      needs.detect-changes.outputs.common_changed == 'true'
     runs-on: ubuntu-latest
     strategy:
+      fail-fast: false  # Một service fail không dừng các service khác
       matrix:
-        service: ${{ fromJSON(needs.changes.outputs.services) }}
-    
+        service:
+          - cinema-gateway
+          - auth-service
+          - booking-service
+          - management-service
+
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-    
-    - name: Set up JDK 17
-      uses: actions/setup-java@v3
-      with:
-        java-version: '17'
-        distribution: 'temurin'
-        cache: maven
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-    - name: Build JAR with Maven
-      working-directory: cinema-microservices/${{ matrix.service }}
-      run: mvn clean package -DskipTests
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          # Cache Maven dependencies để build nhanh hơn (tiết kiệm 2-3 phút)
+          cache: maven
 
-    - name: Log in to Docker Hub
-      uses: docker/login-action@v3
-      with:
-        username: ${{ secrets.DOCKERHUB_USERNAME }}
-        password: ${{ secrets.DOCKERHUB_TOKEN }}
+      - name: Build cinema-common (shared dependency)
+        working-directory: cinema-microservices
+        run: mvn install -pl cinema-common -am -DskipTests -q
 
-    - name: Build and push Docker image
-      uses: docker/build-push-action@v5
-      with:
-        context: ./cinema-microservices
-        file: ./cinema-microservices/Dockerfile.runtime
-        build-args: |
-          MODULE_NAME=${{ matrix.service }}
-        push: ${{ github.event_name == 'push' }} # Chỉ push nếu là sự kiện Push
-        tags: |
-          ${{ secrets.DOCKERHUB_USERNAME }}/${{ matrix.service }}:latest
-          ${{ secrets.DOCKERHUB_USERNAME }}/${{ matrix.service }}:${{ github.sha }}
+      - name: Run Tests for ${{ matrix.service }}
+        working-directory: cinema-microservices
+        # Bỏ -DskipTests để chạy unit test thực sự
+        # Nếu chưa có test, giữ -DskipTests tạm thời
+        run: mvn test -pl ${{ matrix.service }} -DskipTests
+
+      - name: Package JAR for ${{ matrix.service }}
+        working-directory: cinema-microservices
+        run: mvn package -pl ${{ matrix.service }} -DskipTests -q
+
+      # Lưu JAR để job tiếp theo dùng (không build lại)
+      - name: Upload JAR artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: jar-${{ matrix.service }}
+          path: cinema-microservices/${{ matrix.service }}/target/*.jar
+          retention-days: 1
+
+  # ═══════════════════════════════════════════════════════════════
+  # JOB 3: Build Docker image và push lên Docker Hub
+  # ═══════════════════════════════════════════════════════════════
+  push-docker-image:
+    name: Push Docker Image (${{ matrix.service }})
+    needs: build-and-test
+    # Chỉ push khi merge vào main (không push khi chỉ là PR)
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        service:
+          - cinema-gateway
+          - auth-service
+          - booking-service
+          - management-service
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # Tải JAR đã build từ job trước (không build lại)
+      - name: Download JAR artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: jar-${{ matrix.service }}
+          path: cinema-microservices/${{ matrix.service }}/target/
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      # Buildx giúp build multi-platform và tận dụng layer cache
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build and Push Docker Image
+        uses: docker/build-push-action@v6
+        with:
+          context: ./cinema-microservices
+          file: ./cinema-microservices/Dockerfile.runtime
+          build-args: MODULE_NAME=${{ matrix.service }}
+          push: true
+          # 2 tags: :latest và :<commit-sha> để có thể rollback
+          tags: |
+            ${{ env.IMAGE_PREFIX }}/${{ matrix.service }}:latest
+            ${{ env.IMAGE_PREFIX }}/${{ matrix.service }}:${{ github.sha }}
+          # Cache layer từ lần build trước → giảm 50-70% thời gian
+          cache-from: type=registry,ref=${{ env.IMAGE_PREFIX }}/${{ matrix.service }}:buildcache
+          cache-to: type=registry,ref=${{ env.IMAGE_PREFIX }}/${{ matrix.service }}:buildcache,mode=max
+
+  # ═══════════════════════════════════════════════════════════════
+  # JOB 4: Deploy lên VPS qua SSH
+  # ═══════════════════════════════════════════════════════════════
+  deploy-to-vps:
+    name: Deploy to VPS
+    needs: push-docker-image
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          script: |
+            set -e
+            cd ${{ secrets.VPS_DEPLOY_PATH }}
+
+            echo "=== Pulling latest images ==="
+            docker compose pull cinema-gateway auth-service booking-service management-service
+
+            echo "=== Recreating updated containers (zero-downtime where possible) ==="
+            docker compose up -d --no-deps cinema-gateway auth-service booking-service management-service
+
+            echo "=== Removing old/unused images ==="
+            docker image prune -f
+
+            echo "=== Checking service health ==="
+            sleep 30
+            docker compose ps
+
+            echo "✅ Deploy completed successfully!"

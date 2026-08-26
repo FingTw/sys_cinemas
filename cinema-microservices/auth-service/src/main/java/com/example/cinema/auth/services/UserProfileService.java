@@ -1,0 +1,83 @@
+package com.example.cinema.auth.services;
+
+import com.example.cinema.auth.dto.UpdateProfileRequest;
+import com.example.cinema.auth.dto.UserProfileDTO;
+import com.example.cinema.common.exception.ClientException;
+import com.example.cinema.common.exception.ServerException;
+// import UserProfileService;
+import com.example.cinema.auth.entities.User;
+import com.example.cinema.auth.repositories.UserRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import org.modelmapper.ModelMapper;
+import java.util.stream.Collectors;
+
+@Service
+public class UserProfileService {
+
+    private static final Logger log = LoggerFactory.getLogger(UserProfileService.class);
+
+    private final UserRepository userRepository;
+    private final ModelMapper modelMapper;
+
+    public UserProfileService(UserRepository userRepository, ModelMapper modelMapper) {
+        this.userRepository = userRepository;
+        this.modelMapper = modelMapper;
+    }
+
+    @Transactional(readOnly = true)
+    public UserProfileDTO getProfile(String userId) {
+        log.info("Truy van thong tin ca nhan User ID: [{}]", userId);
+        try {
+            // Try internal ID first, then fallback to sso_subject (Keycloak sub)
+            User user = userRepository.findById(userId)
+                    .or(() -> userRepository.findBySsoSubject(userId))
+                    .orElseThrow(() -> new ClientException("Khong tim thay nguoi dung."));
+            return convertToDTO(user);
+        } catch (ClientException e) {
+            throw e;
+        } catch (Exception e) {
+            log.error("Loi khi truy van profile User [{}]: {}", userId, e.getMessage(), e);
+            throw new ServerException("Loi he thong khi truy van thong tin ca nhan: " + e.getMessage(), e);
+        }
+    }
+
+    @Transactional
+    public UserProfileDTO updateProfile(String userId, UpdateProfileRequest request) {
+        log.info("Cap nhat thong tin ca nhan User ID: [{}]", userId);
+        try {
+            // Try internal ID first, then fallback to sso_subject (Keycloak sub)
+            User user = userRepository.findById(userId)
+                    .or(() -> userRepository.findBySsoSubject(userId))
+                    .orElseThrow(() -> new ClientException("Khong tim thay nguoi dung."));
+
+            // Validate email
+            if (request.getEmail() == null || request.getEmail().isBlank()) {
+                throw new ClientException("Email khong duoc de trong.");
+            }
+
+            if (!request.getEmail().contains("@")) {
+                throw new ClientException("Email khong hop le.");
+            }
+
+            user.updateEmail(request.getEmail());
+            userRepository.save(user);
+
+            log.info("Da cap nhat email thanh cong cho User [{}]", userId);
+            return convertToDTO(user);
+        } catch (ClientException e) {
+            throw e;
+        } catch (Exception e) {
+            log.error("Loi khi cap nhat profile User [{}]: {}", userId, e.getMessage(), e);
+            throw new ServerException("Loi he thong khi cap nhat thong tin ca nhan: " + e.getMessage(), e);
+        }
+    }
+
+    private UserProfileDTO convertToDTO(User user) {
+        UserProfileDTO dto = modelMapper.map(user, UserProfileDTO.class);
+        return dto;
+    }
+}

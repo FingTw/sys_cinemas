@@ -1,0 +1,184 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:camunda="http://camunda.org/schema/1.0/bpmn" xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" xmlns:di="http://www.omg.org/spec/DD/20100524/DI" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" id="Definitions_1" targetNamespace="http://bpmn.io/schema/bpmn" exporter="Camunda Modeler" exporterVersion="5.45.0">
+  <bpmn:collaboration id="Collaboration_Booking">
+    <bpmn:participant id="Participant_Customer" name="Khách hàng" />
+    <bpmn:participant id="Participant_System" name="Hệ thống Web Rạp Phim" processRef="movie-ticket-booking-process" />
+    <bpmn:messageFlow id="Flow_Message_Request" name="Gửi yêu cầu đặt vé" sourceRef="Participant_Customer" targetRef="StartEvent_Booking" />
+    <bpmn:messageFlow id="Flow_Message_Ticket" name="Nhận vé QR qua Email/SMS" sourceRef="Activity_SendTicket" targetRef="Participant_Customer" />
+  </bpmn:collaboration>
+  <bpmn:process id="movie-ticket-booking-process" name="Quy trình đặt vé xem phim" isExecutable="true">
+    <bpmn:laneSet id="LaneSet_1">
+      <bpmn:lane id="Lane_Booking" name="Giao diện &amp; Đặt chỗ">
+        <bpmn:flowNodeRef>StartEvent_Booking</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Activity_LockSeats</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Activity_CancelBooking</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>EndEvent_Cancelled</bpmn:flowNodeRef>
+      </bpmn:lane>
+      <bpmn:lane id="Lane_Payment" name="Cổng thanh toán">
+        <bpmn:flowNodeRef>Activity_GenerateURL</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Event_PaymentTimeout</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Activity_WaitForPayment</bpmn:flowNodeRef>
+      </bpmn:lane>
+      <bpmn:lane id="Lane_Ticket" name="Quản lý vé &amp; Thông báo">
+        <bpmn:flowNodeRef>Activity_ConfirmTicket</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Activity_SendTicket</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>EndEvent_Success</bpmn:flowNodeRef>
+      </bpmn:lane>
+    </bpmn:laneSet>
+    <bpmn:startEvent id="StartEvent_Booking" name="Khách bắt đầu đặt vé" camunda:asyncBefore="true">
+      <bpmn:outgoing>Flow_StartToLock</bpmn:outgoing>
+    </bpmn:startEvent>
+    <bpmn:serviceTask id="Activity_LockSeats" name="Giữ ghế &amp; Tạo đơn PENDING" camunda:delegateExpression="${lockSeatsDelegate}">
+      <bpmn:incoming>Flow_StartToLock</bpmn:incoming>
+      <bpmn:outgoing>Flow_LockToURL</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:serviceTask id="Activity_CancelBooking" name="Hủy đơn &amp; Giải phóng ghế" camunda:delegateExpression="${cancelBookingDelegate}">
+      <bpmn:outgoing>Flow_CancelToEnd</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:endEvent id="EndEvent_Cancelled" name="Đơn bị hủy do quá hạn">
+      <bpmn:incoming>Flow_CancelToEnd</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:serviceTask id="Activity_GenerateURL" name="Sinh URL thanh toán VNPay" camunda:delegateExpression="${generatePaymentUrlDelegate}">
+      <bpmn:incoming>Flow_LockToURL</bpmn:incoming>
+      <bpmn:outgoing>Flow_URLToGateway</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:receiveTask id="Activity_WaitForPayment" name="Chờ callback VNPay" messageRef="Message_PaymentReceived">
+      <bpmn:incoming>Flow_URLToGateway</bpmn:incoming>
+      <bpmn:outgoing>Flow_SuccessToConfirm</bpmn:outgoing>
+    </bpmn:receiveTask>
+    <bpmn:boundaryEvent id="Event_PaymentTimeout" name="Quá hạn" attachedToRef="Activity_WaitForPayment">
+      <bpmn:outgoing>Flow_GatewayToTimeout</bpmn:outgoing>
+      <bpmn:timerEventDefinition id="TimerEventDefinition_1">
+        <bpmn:timeDuration xsi:type="bpmn:tFormalExpression">PT10M</bpmn:timeDuration>
+      </bpmn:timerEventDefinition>
+    </bpmn:boundaryEvent>
+    <bpmn:serviceTask id="Activity_ConfirmTicket" name="Xác nhận đơn CONFIRMED" camunda:delegateExpression="${confirmBookingDelegate}">
+      <bpmn:incoming>Flow_SuccessToConfirm</bpmn:incoming>
+      <bpmn:outgoing>Flow_ConfirmToSend</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:serviceTask id="Activity_SendTicket" name="Phát sự kiện Kafka &amp; Gửi mail" camunda:delegateExpression="${publishBookingConfirmedDelegate}">
+      <bpmn:incoming>Flow_ConfirmToSend</bpmn:incoming>
+      <bpmn:outgoing>Flow_SendToEnd</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:endEvent id="EndEvent_Success" name="Hoàn tất quy trình">
+      <bpmn:incoming>Flow_SendToEnd</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:sequenceFlow id="Flow_StartToLock" sourceRef="StartEvent_Booking" targetRef="Activity_LockSeats" />
+    <bpmn:sequenceFlow id="Flow_LockToURL" sourceRef="Activity_LockSeats" targetRef="Activity_GenerateURL" />
+    <bpmn:sequenceFlow id="Flow_URLToGateway" sourceRef="Activity_GenerateURL" targetRef="Activity_WaitForPayment" />
+    <bpmn:sequenceFlow id="Flow_GatewayToTimeout" sourceRef="Event_PaymentTimeout" targetRef="Activity_CancelBooking" />
+    <bpmn:sequenceFlow id="Flow_SuccessToConfirm" sourceRef="Activity_WaitForPayment" targetRef="Activity_ConfirmTicket" />
+    <bpmn:sequenceFlow id="Flow_CancelToEnd" sourceRef="Activity_CancelBooking" targetRef="EndEvent_Cancelled" />
+    <bpmn:sequenceFlow id="Flow_ConfirmToSend" sourceRef="Activity_ConfirmTicket" targetRef="Activity_SendTicket" />
+    <bpmn:sequenceFlow id="Flow_SendToEnd" sourceRef="Activity_SendTicket" targetRef="EndEvent_Success" />
+  </bpmn:process>
+  <bpmn:message id="Message_PaymentReceived" name="PaymentReceivedMessage" />
+  <bpmndi:BPMNDiagram id="BPMNDiagram_1">
+    <bpmndi:BPMNPlane id="BPMNPlane_1" bpmnElement="Collaboration_Booking">
+      <bpmndi:BPMNShape id="Participant_Customer_di" bpmnElement="Participant_Customer" isHorizontal="true">
+        <dc:Bounds x="120" y="80" width="1150" height="60" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Participant_System_di" bpmnElement="Participant_System" isHorizontal="true">
+        <dc:Bounds x="120" y="200" width="1150" height="600" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Lane_Ticket_di" bpmnElement="Lane_Ticket" isHorizontal="true">
+        <dc:Bounds x="150" y="600" width="1120" height="200" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Lane_Payment_di" bpmnElement="Lane_Payment" isHorizontal="true">
+        <dc:Bounds x="150" y="400" width="1120" height="200" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Lane_Booking_di" bpmnElement="Lane_Booking" isHorizontal="true">
+        <dc:Bounds x="150" y="200" width="1120" height="200" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="StartEvent_Booking_di" bpmnElement="StartEvent_Booking">
+        <dc:Bounds x="200" y="282" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="183" y="325" width="71" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Activity_LockSeats_di" bpmnElement="Activity_LockSeats">
+        <dc:Bounds x="300" y="260" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Activity_CancelBooking_di" bpmnElement="Activity_CancelBooking">
+        <dc:Bounds x="900" y="260" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="EndEvent_Cancelled_di" bpmnElement="EndEvent_Cancelled">
+        <dc:Bounds x="1100" y="282" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1083" y="325" width="71" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Activity_GenerateURL_di" bpmnElement="Activity_GenerateURL">
+        <dc:Bounds x="450" y="460" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Activity_WaitForPayment_di" bpmnElement="Activity_WaitForPayment">
+        <dc:Bounds x="600" y="460" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Activity_ConfirmTicket_di" bpmnElement="Activity_ConfirmTicket">
+        <dc:Bounds x="850" y="660" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Activity_SendTicket_di" bpmnElement="Activity_SendTicket">
+        <dc:Bounds x="1000" y="660" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="EndEvent_Success_di" bpmnElement="EndEvent_Success">
+        <dc:Bounds x="1150" y="682" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1133" y="725" width="71" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Event_PaymentTimeout_di" bpmnElement="Event_PaymentTimeout">
+        <dc:Bounds x="632" y="522" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="Flow_StartToLock_di" bpmnElement="Flow_StartToLock">
+        <di:waypoint x="236" y="300" />
+        <di:waypoint x="300" y="300" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_LockToURL_di" bpmnElement="Flow_LockToURL">
+        <di:waypoint x="400" y="300" />
+        <di:waypoint x="425" y="300" />
+        <di:waypoint x="425" y="500" />
+        <di:waypoint x="450" y="500" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_URLToGateway_di" bpmnElement="Flow_URLToGateway">
+        <di:waypoint x="550" y="500" />
+        <di:waypoint x="600" y="500" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_GatewayToTimeout_di" bpmnElement="Flow_GatewayToTimeout">
+        <di:waypoint x="650" y="558" />
+        <di:waypoint x="650" y="600" />
+        <di:waypoint x="828" y="600" />
+        <di:waypoint x="828" y="300" />
+        <di:waypoint x="900" y="300" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_SuccessToConfirm_di" bpmnElement="Flow_SuccessToConfirm">
+        <di:waypoint x="700" y="500" />
+        <di:waypoint x="775" y="500" />
+        <di:waypoint x="775" y="700" />
+        <di:waypoint x="850" y="700" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_CancelToEnd_di" bpmnElement="Flow_CancelToEnd">
+        <di:waypoint x="1000" y="300" />
+        <di:waypoint x="1100" y="300" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_ConfirmToSend_di" bpmnElement="Flow_ConfirmToSend">
+        <di:waypoint x="950" y="700" />
+        <di:waypoint x="1000" y="700" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_SendToEnd_di" bpmnElement="Flow_SendToEnd">
+        <di:waypoint x="1100" y="700" />
+        <di:waypoint x="1150" y="700" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_Message_Request_di" bpmnElement="Flow_Message_Request">
+        <di:waypoint x="218" y="140" />
+        <di:waypoint x="218" y="282" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_Message_Ticket_di" bpmnElement="Flow_Message_Ticket">
+        <di:waypoint x="1050" y="660" />
+        <di:waypoint x="1050" y="140" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1024" y="413" width="83" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+</bpmn:definitions>

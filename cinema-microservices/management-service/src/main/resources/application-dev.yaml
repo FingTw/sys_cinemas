@@ -1,0 +1,67 @@
+server:
+  port: 8086
+  tomcat:
+    connection-timeout: 10s
+    keep-alive-timeout: 15s
+    max-keep-alive-requests: 100
+    threads:
+      max: 50
+      min-spare: 5
+
+spring:
+  config:
+    import: "optional:file:../../.env[.properties]"
+  datasource:
+    url: jdbc:postgresql://${DB_HOST}:5432/cinema_db
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
+    driver-class-name: org.postgresql.Driver
+  hikari:
+    maximum-pool-size: 10
+    minimum-idle: 2
+    connection-timeout: 30000
+    idle-timeout: 600000
+    max-lifetime: 1800000
+  mvc:
+    async:
+      request-timeout: 30000
+  jpa:
+    hibernate:
+      ddl-auto: none
+    show-sql: false
+
+  data:
+    redis:
+      host: ${REDIS_HOST}
+      port: ${REDIS_PORT}
+
+
+
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: ${KEYCLOAK_URL}/realms/cinema-realm
+          jwk-set-uri: ${KEYCLOAK_ISSUER_URI_INTERNAL}/protocol/openid-connect/certs
+keycloak:
+  token-uri: ${KEYCLOAK_ISSUER_URI}/protocol/openid-connect/token
+  client-id: ${KEYCLOAK_CLIENT_ID}
+  client-secret: ${KEYCLOAK_CLIENT_SECRET}
+
+app:
+  security:
+    jwt-secret: ${APP_SECURITY_JWT_SECRET}
+    jwt-expiration-ms: ${JWT_EXPIRATION_MS}
+    api-key: ${API_KEY}
+    crypto-key: ${CRYPTO_KEY}
+    internal-api-key: ${APP_SECURITY_INTERNAL_API_KEY:secret-key-123}
+    cors:
+      allowed-origins: ${CORS_ALLOWED_ORIGINS}
+  services:
+    catalog:
+      url: ${CATALOG_SERVICE_URL}/api/v1/movies
+    facility:
+      url: ${FACILITY_SERVICE_URL}/api/v1/rooms
+    booking:
+      url: ${BOOKING_SERVICE_URL}
+

@@ -3,10 +3,9 @@
 -- but in Docker postgres image, POSTGRES_DB is created first.
 -- So we use this script to create schemas.
 
--- Create Schemas
-CREATE SCHEMA IF NOT EXISTS auth;
-CREATE SCHEMA IF NOT EXISTS catalog;
-CREATE SCHEMA IF NOT EXISTS facility;
-CREATE SCHEMA IF NOT EXISTS scheduling;
-CREATE SCHEMA IF NOT EXISTS booking;
-CREATE SCHEMA IF NOT EXISTS keycloak;
+-- Create Databases for Microservices
+CREATE DATABASE auth_db;
+CREATE DATABASE management_db;
+CREATE DATABASE booking_db;
+
+-- Connect to each and create schemas if needed (Optional, usually we just use public schema when separated)

@@ -1,0 +1,392 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<jasperReport xmlns="http://jasperreports.sourceforge.net/jasperreports"
+              xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+              xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports http://jasperreports.sourceforge.net/xsd/jasperreport.xsd"
+              name="revenue_report"
+              pageWidth="595"
+              pageHeight="842"
+              columnWidth="555"
+              leftMargin="20"
+              rightMargin="20"
+              topMargin="20"
+              bottomMargin="20"
+              uuid="a1b2c3d4-e5f6-4789-9abc-def012345678">
+
+    <!-- ═══════════════════════════════════════════════════════════
+         PARAMETERS — dữ liệu tổng hợp, lấy từ API (không dùng SQL)
+         ═══════════════════════════════════════════════════════════ -->
+    <parameter name="CinemaName"     class="java.lang.String"/>
+    <parameter name="ReportTitle"    class="java.lang.String">
+        <defaultValueExpression><![CDATA["BÁO CÁO DOANH THU"]]></defaultValueExpression>
+    </parameter>
+    <parameter name="FromDate"       class="java.util.Date"/>
+    <parameter name="ToDate"         class="java.util.Date"/>
+    <parameter name="AdminName"      class="java.lang.String"/>
+    <parameter name="GeneratedAt"    class="java.util.Date"/>
+
+    <!-- ═══════════════════════════════════════════════════════════
+         FIELDS — mỗi dòng dữ liệu (theo phim / theo ngày / theo rạp)
+         ═══════════════════════════════════════════════════════════ -->
+    <field name="itemName"    class="java.lang.String"/>
+    <field name="ticketCount" class="java.lang.Long"/>
+    <field name="revenue"     class="java.math.BigDecimal"/>
+
+    <!-- ═══════════════════════════════════════════════════════════
+         VARIABLES — tính tổng để hiển thị ở summary
+         ═══════════════════════════════════════════════════════════ -->
+    <variable name="TotalTickets" class="java.lang.Long" calculation="Sum">
+        <variableExpression><![CDATA[$F{ticketCount}]]></variableExpression>
+    </variable>
+    <variable name="TotalRevenue" class="java.math.BigDecimal" calculation="Sum">
+        <variableExpression><![CDATA[$F{revenue}]]></variableExpression>
+    </variable>
+    <variable name="AvgPerTicket" class="java.math.BigDecimal" calculation="System">
+        <variableExpression><![CDATA[$V{TotalTickets} == 0 ? java.math.BigDecimal.ZERO : $V{TotalRevenue}.divide(java.math.BigDecimal.valueOf($V{TotalTickets}), 0, java.math.RoundingMode.HALF_UP)]]></variableExpression>
+    </variable>
+
+    <background>
+        <band splitType="Stretch"/>
+    </background>
+
+    <!-- ══════════════════════════════════════════════════
+         TITLE — Header card + 3 thẻ KPI tổng quan
+         ══════════════════════════════════════════════════ -->
+    <title>
+        <band height="230" splitType="Stretch">
+
+            <!-- nền hồng nhạt toàn khối title -->
+            <rectangle>
+                <reportElement mode="Opaque" x="0" y="0" width="555" height="230"
+                               backcolor="#FFF1F1" uuid="00000000-0000-0000-0000-000000000001"/>
+                <graphicElement><pen lineWidth="0.0"/></graphicElement>
+            </rectangle>
+
+            <!-- Card header trắng -->
+            <rectangle>
+                <reportElement mode="Opaque" x="0" y="0" width="555" height="90"
+                               backcolor="#FFFFFF" forecolor="#FFE4E4" uuid="00000000-0000-0000-0000-000000000002"/>
+                <graphicElement><pen lineWidth="0.5" lineStyle="Solid"/></graphicElement>
+            </rectangle>
+
+            <!-- Logo placeholder -->
+            <rectangle>
+                <reportElement mode="Opaque" x="16" y="16" width="36" height="36"
+                               backcolor="#DC2626" uuid="00000000-0000-0000-0000-000000000003"/>
+                <graphicElement><pen lineWidth="0.0"/></graphicElement>
+            </rectangle>
+            <staticText>
+                <reportElement x="16" y="16" width="36" height="36"
+                               forecolor="#FFFFFF" uuid="00000000-0000-0000-0000-000000000004"/>
+                <textElement textAlignment="Center" verticalAlignment="Middle">
+                    <font fontName="DejaVu Sans" size="14" isBold="true"/>
+                </textElement>
+                <text><![CDATA[SC]]></text>
+            </staticText>
+
+            <!-- Tên rạp / hệ thống -->
+            <textField isBlankWhenNull="true">
+                <reportElement x="62" y="14" width="300" height="16"
+                               forecolor="#6B7280" uuid="00000000-0000-0000-0000-000000000005"/>
+                <textElement verticalAlignment="Middle">
+                    <font fontName="DejaVu Sans" size="9"/>
+                </textElement>
+                <textFieldExpression><![CDATA[$P{CinemaName}]]></textFieldExpression>
+            </textField>
+
+            <!-- Tiêu đề báo cáo -->
+            <textField isBlankWhenNull="true">
+                <reportElement x="62" y="30" width="300" height="26"
+                               forecolor="#111827" uuid="00000000-0000-0000-0000-000000000006"/>
+                <textElement verticalAlignment="Middle">
+                    <font fontName="DejaVu Sans" size="17" isBold="true"/>
+                </textElement>
+                <textFieldExpression><![CDATA[$P{ReportTitle}]]></textFieldExpression>
+            </textField>
+
+            <!-- Khoảng thời gian báo cáo -->
+            <textField pattern="'Từ' dd/MM/yyyy" isBlankWhenNull="true">
+                <reportElement x="62" y="58" width="150" height="14"
+                               forecolor="#9CA3AF" uuid="00000000-0000-0000-0000-000000000007"/>
+                <textElement verticalAlignment="Middle">
+                    <font fontName="DejaVu Sans" size="8"/>
+                </textElement>
+                <textFieldExpression><![CDATA[$P{FromDate}]]></textFieldExpression>
+            </textField>
+            <textField pattern="'đến' dd/MM/yyyy" isBlankWhenNull="true">
+                <reportElement x="212" y="58" width="150" height="14"
+                               forecolor="#9CA3AF" uuid="00000000-0000-0000-0000-000000000008"/>
+                <textElement verticalAlignment="Middle">
+                    <font fontName="DejaVu Sans" size="8"/>
+                </textElement>
+                <textFieldExpression><![CDATA[$P{ToDate}]]></textFieldExpression>
+            </textField>
+
+            <!-- Người tạo + thời gian tạo (góc phải) -->
+            <textField isBlankWhenNull="true">
+                <reportElement x="375" y="20" width="164" height="14"
+                               forecolor="#6B7280" uuid="00000000-0000-0000-0000-000000000009"/>
+                <textElement textAlignment="Right" verticalAlignment="Middle">
+                    <font fontName="DejaVu Sans" size="8"/>
+                </textElement>
+                <textFieldExpression><![CDATA["Người tạo: " + $P{AdminName}]]></textFieldExpression>
+            </textField>
+            <textField pattern="'Xuất lúc' HH:mm - dd/MM/yyyy" isBlankWhenNull="true">
+                <reportElement x="375" y="36" width="164" height="14"
+                               forecolor="#6B7280" uuid="00000000-0000-0000-0000-00000000000a"/>
+                <textElement textAlignment="Right" verticalAlignment="Middle">
+                    <font fontName="DejaVu Sans" size="8"/>
+                </textElement>
+                <textFieldExpression><![CDATA[$P{GeneratedAt}]]></textFieldExpression>
+            </textField>
+
+            <!-- ── 3 thẻ KPI ── -->
+            <!-- KPI 1: Tổng doanh thu -->
+            <rectangle>
+                <reportElement mode="Opaque" x="0" y="106" width="177" height="90"
+                               backcolor="#FFFFFF" forecolor="#FFE4E4" uuid="00000000-0000-0000-0000-00000000000b"/>
+                <graphicElement><pen lineWidth="0.5" lineStyle="Solid"/></graphicElement>
+            </rectangle>
+            <staticText>
+                <reportElement x="14" y="118" width="150" height="14"
+                               forecolor="#9CA3AF" uuid="00000000-0000-0000-0000-00000000000c"/>
+                <textElement verticalAlignment="Middle">
+                    <font fontName="DejaVu Sans" size="9"/>
+                </textElement>
+                <text><![CDATA[Tổng doanh thu]]></text>
+            </staticText>
+            <textField pattern="#,##0đ" isBlankWhenNull="true">
+                <reportElement x="14" y="150" width="150" height="26"
+                               forecolor="#DC2626" uuid="00000000-0000-0000-0000-00000000000d"/>
+                <textElement verticalAlignment="Middle">
+                    <font fontName="DejaVu Sans" size="17" isBold="true"/>
+                </textElement>
+                <textFieldExpression><![CDATA[$V{TotalRevenue}]]></textFieldExpression>
+            </textField>
+
+            <!-- KPI 2: Tổng vé bán -->
+            <rectangle>
+                <reportElement mode="Opaque" x="189" y="106" width="177" height="90"
+                               backcolor="#FFFFFF" forecolor="#FFE4E4" uuid="00000000-0000-0000-0000-00000000000e"/>
+                <graphicElement><pen lineWidth="0.5" lineStyle="Solid"/></graphicElement>
+            </rectangle>
+            <staticText>
+                <reportElement x="203" y="118" width="150" height="14"
+                               forecolor="#9CA3AF" uuid="00000000-0000-0000-0000-00000000000f"/>
+                <textElement verticalAlignment="Middle">
+                    <font fontName="DejaVu Sans" size="9"/>
+                </textElement>
+                <text><![CDATA[Tổng vé bán]]></text>
+            </staticText>
+            <textField pattern="#,##0" isBlankWhenNull="true">
+                <reportElement x="203" y="150" width="150" height="26"
+                               forecolor="#111827" uuid="00000000-0000-0000-0000-000000000010"/>
+                <textElement verticalAlignment="Middle">
+                    <font fontName="DejaVu Sans" size="17" isBold="true"/>
+                </textElement>
+                <textFieldExpression><![CDATA[$V{TotalTickets}]]></textFieldExpression>
+            </textField>
+
+            <!-- KPI 3: Trung bình / vé -->
+            <rectangle>
+                <reportElement mode="Opaque" x="378" y="106" width="177" height="90"
+                               backcolor="#FFFFFF" forecolor="#FFE4E4" uuid="00000000-0000-0000-0000-000000000011"/>
+                <graphicElement><pen lineWidth="0.5" lineStyle="Solid"/></graphicElement>
+            </rectangle>
+            <staticText>
+                <reportElement x="392" y="118" width="150" height="14"
+                               forecolor="#9CA3AF" uuid="00000000-0000-0000-0000-000000000012"/>
+                <textElement verticalAlignment="Middle">
+                    <font fontName="DejaVu Sans" size="9"/>
+                </textElement>
+                <text><![CDATA[Trung bình / vé]]></text>
+            </staticText>
+            <textField pattern="#,##0đ" isBlankWhenNull="true">
+                <reportElement x="392" y="150" width="150" height="26"
+                               forecolor="#111827" uuid="00000000-0000-0000-0000-000000000013"/>
+                <textElement verticalAlignment="Middle">
+                    <font fontName="DejaVu Sans" size="17" isBold="true"/>
+                </textElement>
+                <textFieldExpression><![CDATA[$V{AvgPerTicket}]]></textFieldExpression>
+            </textField>
+
+        </band>
+    </title>
+
+    <!-- ══════════════════════════════════════════════════
+         COLUMN HEADER — tiêu đề bảng chi tiết
+         ══════════════════════════════════════════════════ -->
+    <columnHeader>
+        <band height="30" splitType="Stretch">
+            <rectangle>
+                <reportElement mode="Opaque" x="0" y="0" width="555" height="30"
+                               backcolor="#FFF1F1" uuid="00000000-0000-0000-0000-000000000014"/>
+                <graphicElement><pen lineWidth="0.0"/></graphicElement>
+            </rectangle>
+            <staticText>
+                <reportElement x="14" y="0" width="40" height="30"
+                               forecolor="#6B7280" uuid="00000000-0000-0000-0000-000000000015"/>
+                <textElement verticalAlignment="Middle">
+                    <font fontName="DejaVu Sans" size="9" isBold="true"/>
+                </textElement>
+                <text><![CDATA[STT]]></text>
+            </staticText>
+            <staticText>
+                <reportElement x="60" y="0" width="270" height="30"
+                               forecolor="#6B7280" uuid="00000000-0000-0000-0000-000000000016"/>
+                <textElement verticalAlignment="Middle">
+                    <font fontName="DejaVu Sans" size="9" isBold="true"/>
+                </textElement>
+                <text><![CDATA[Phim / Ngày]]></text>
+            </staticText>
+            <staticText>
+                <reportElement x="340" y="0" width="90" height="30"
+                               forecolor="#6B7280" uuid="00000000-0000-0000-0000-000000000017"/>
+                <textElement textAlignment="Right" verticalAlignment="Middle">
+                    <font fontName="DejaVu Sans" size="9" isBold="true"/>
+                </textElement>
+                <text><![CDATA[Số vé bán]]></text>
+            </staticText>
+            <staticText>
+                <reportElement x="440" y="0" width="101" height="30"
+                               forecolor="#6B7280" uuid="00000000-0000-0000-0000-000000000018"/>
+                <textElement textAlignment="Right" verticalAlignment="Middle">
+                    <font fontName="DejaVu Sans" size="9" isBold="true"/>
+                </textElement>
+                <text><![CDATA[Doanh thu]]></text>
+            </staticText>
+        </band>
+    </columnHeader>
+
+    <!-- ══════════════════════════════════════════════════
+         DETAIL — mỗi dòng dữ liệu, tô nền xen kẽ
+         ══════════════════════════════════════════════════ -->
+    <detail>
+        <band height="26" splitType="Stretch">
+
+            <!-- nền xen kẽ cho dòng chẵn -->
+            <rectangle>
+                <reportElement mode="Opaque" x="0" y="0" width="555" height="26"
+                               backcolor="#FAFAFA" uuid="00000000-0000-0000-0000-000000000019">
+                    <printWhenExpression><![CDATA[$V{REPORT_COUNT} % 2 == 0]]></printWhenExpression>
+                </reportElement>
+                <graphicElement><pen lineWidth="0.0"/></graphicElement>
+            </rectangle>
+
+            <textField>
+                <reportElement x="14" y="0" width="40" height="26"
+                               forecolor="#9CA3AF" uuid="00000000-0000-0000-0000-00000000001a"/>
+                <textElement verticalAlignment="Middle">
+                    <font fontName="DejaVu Sans" size="9"/>
+                </textElement>
+                <textFieldExpression><![CDATA[$V{REPORT_COUNT}]]></textFieldExpression>
+            </textField>
+
+            <textField isBlankWhenNull="true" isStretchWithOverflow="true">
+                <reportElement x="60" y="0" width="270" height="26"
+                               forecolor="#111827" uuid="00000000-0000-0000-0000-00000000001b"/>
+                <textElement verticalAlignment="Middle">
+                    <font fontName="DejaVu Sans" size="10"/>
+                </textElement>
+                <textFieldExpression><![CDATA[$F{itemName}]]></textFieldExpression>
+            </textField>
+
+            <textField pattern="#,##0" isBlankWhenNull="true">
+                <reportElement x="340" y="0" width="90" height="26"
+                               forecolor="#111827" uuid="00000000-0000-0000-0000-00000000001c"/>
+                <textElement textAlignment="Right" verticalAlignment="Middle">
+                    <font fontName="DejaVu Sans" size="10"/>
+                </textElement>
+                <textFieldExpression><![CDATA[$F{ticketCount}]]></textFieldExpression>
+            </textField>
+
+            <textField pattern="#,##0đ" isBlankWhenNull="true">
+                <reportElement x="440" y="0" width="101" height="26"
+                               forecolor="#DC2626" uuid="00000000-0000-0000-0000-00000000001d"/>
+                <textElement textAlignment="Right" verticalAlignment="Middle">
+                    <font fontName="DejaVu Sans" size="10" isBold="true"/>
+                </textElement>
+                <textFieldExpression><![CDATA[$F{revenue}]]></textFieldExpression>
+            </textField>
+
+            <line>
+                <reportElement x="14" y="25" width="527" height="1"
+                               forecolor="#F3F4F6" uuid="00000000-0000-0000-0000-00000000001e"/>
+            </line>
+
+        </band>
+    </detail>
+
+    <!-- ══════════════════════════════════════════════════
+         PAGE FOOTER — số trang
+         ══════════════════════════════════════════════════ -->
+    <pageFooter>
+        <band height="20" splitType="Stretch">
+            <textField>
+                <reportElement x="440" y="0" width="101" height="18"
+                               forecolor="#9CA3AF" uuid="00000000-0000-0000-0000-000000000025"/>
+                <textElement textAlignment="Right" verticalAlignment="Middle">
+                    <font fontName="DejaVu Sans" size="8"/>
+                </textElement>
+                <textFieldExpression><![CDATA["Trang " + $V{PAGE_NUMBER}]]></textFieldExpression>
+            </textField>
+        </band>
+    </pageFooter>
+
+    <!-- ══════════════════════════════════════════════════
+         SUMMARY — dòng tổng cộng + thanh thương hiệu footer
+         ══════════════════════════════════════════════════ -->
+    <summary>
+        <band height="70" splitType="Stretch">
+
+            <rectangle>
+                <reportElement mode="Opaque" x="0" y="0" width="555" height="34"
+                               backcolor="#FFF1F1" uuid="00000000-0000-0000-0000-00000000001f"/>
+                <graphicElement><pen lineWidth="0.0"/></graphicElement>
+            </rectangle>
+
+            <staticText>
+                <reportElement x="14" y="0" width="326" height="34"
+                               forecolor="#111827" uuid="00000000-0000-0000-0000-000000000020"/>
+                <textElement verticalAlignment="Middle">
+                    <font fontName="DejaVu Sans" size="11" isBold="true"/>
+                </textElement>
+                <text><![CDATA[TỔNG CỘNG]]></text>
+            </staticText>
+
+            <textField pattern="#,##0" isBlankWhenNull="true">
+                <reportElement x="340" y="0" width="90" height="34"
+                               forecolor="#111827" uuid="00000000-0000-0000-0000-000000000021"/>
+                <textElement textAlignment="Right" verticalAlignment="Middle">
+                    <font fontName="DejaVu Sans" size="11" isBold="true"/>
+                </textElement>
+                <textFieldExpression><![CDATA[$V{TotalTickets}]]></textFieldExpression>
+            </textField>
+
+            <textField pattern="#,##0đ" isBlankWhenNull="true">
+                <reportElement x="440" y="0" width="101" height="34"
+                               forecolor="#DC2626" uuid="00000000-0000-0000-0000-000000000022"/>
+                <textElement textAlignment="Right" verticalAlignment="Middle">
+                    <font fontName="DejaVu Sans" size="13" isBold="true"/>
+                </textElement>
+                <textFieldExpression><![CDATA[$V{TotalRevenue}]]></textFieldExpression>
+            </textField>
+
+            <!-- Thanh thương hiệu footer -->
+            <rectangle>
+                <reportElement mode="Opaque" x="0" y="44" width="555" height="26"
+                               backcolor="#DC2626" uuid="00000000-0000-0000-0000-000000000023"/>
+                <graphicElement><pen lineWidth="0.0"/></graphicElement>
+            </rectangle>
+            <staticText>
+                <reportElement x="0" y="44" width="555" height="26"
+                               forecolor="#FFFFFF" uuid="00000000-0000-0000-0000-000000000024"/>
+                <textElement textAlignment="Center" verticalAlignment="Middle">
+                    <font fontName="DejaVu Sans" size="9" isBold="true"/>
+                </textElement>
+                <text><![CDATA[SYS CINEMA  ·  Báo cáo doanh thu nội bộ]]></text>
+            </staticText>
+
+        </band>
+    </summary>
+
+</jasperReport>

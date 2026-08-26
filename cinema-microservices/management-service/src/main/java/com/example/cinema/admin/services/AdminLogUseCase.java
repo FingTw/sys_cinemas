@@ -1,0 +1,11 @@
+package com.example.cinema.admin.services;
+
+import com.example.cinema.admin.dto.LogServiceInfoDto;
+import com.example.cinema.admin.dto.LogTraceDto;
+import java.util.List;
+
+public interface AdminLogUseCase {
+    List<LogTraceDto> traceLogs(String requestId);
+    List<LogServiceInfoDto> getLogServicesInfo();
+    List<LogTraceDto> getRecentLogs(int limit);
+}

@@ -27,15 +27,16 @@ public class ApiKeyFilter extends OncePerRequestFilter {
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
             throws ServletException, IOException {
-        
+
         String path = request.getRequestURI();
-        
-        // Always bypass internal APIs (they are verified at the controller level using X-Internal-Api-Key)
+
+        // Always bypass internal APIs (they are verified at the controller level using
+        // X-Internal-Api-Key)
         if (path.startsWith("/api/v1/internal/")) {
             filterChain.doFilter(request, response);
             return;
         }
-        
+
         // Load bypass paths from Redis or use fallback static list
         String bypassPathsStr = null;
         try {
@@ -63,13 +64,16 @@ public class ApiKeyFilter extends OncePerRequestFilter {
                     || path.startsWith("/v3/api-docs")
                     || path.startsWith("/swagger-ui")
                     || path.equals("/api/v1/auth/public-key")
+                    || path.equals("/api/v1/auth/login")
+                    || path.equals("/api/v1/auth/callback")
                     || path.startsWith("/api/v1/movies")
                     || path.startsWith("/api/v1/featured-movies")
                     || path.startsWith("/api/v1/showtimes")
                     || path.startsWith("/api/v1/rooms")
                     || path.startsWith("/api/v1/facilities")
                     || path.startsWith("/api/v1/vnpay")
-                    || path.startsWith("/api/v1/public");
+                    || path.startsWith("/api/v1/public")
+                    || path.startsWith("/ws");
         }
 
         if (isBypassed) {
@@ -80,7 +84,8 @@ public class ApiKeyFilter extends OncePerRequestFilter {
         String apiKey = request.getHeader("X-API-Key");
         String authHeader = request.getHeader("Authorization");
 
-        // Nếu có Authorization (JWT) thì bỏ qua check API Key vì JWTAuthenticationFilter sẽ lo
+        // Nếu có Authorization (JWT) thì bỏ qua check API Key vì
+        // JWTAuthenticationFilter sẽ lo
         if (authHeader != null && authHeader.startsWith("Bearer ")) {
             filterChain.doFilter(request, response);
             return;
@@ -101,7 +106,9 @@ public class ApiKeyFilter extends OncePerRequestFilter {
         if (apiKey == null || !apiKey.equals(currentApiKey)) {
             response.setStatus(HttpServletResponse.SC_FORBIDDEN);
             response.setContentType("application/json;charset=UTF-8");
-            String json = String.format("{\"timestamp\": \"%s\", \"status\": 403, \"error\": \"Forbidden\", \"message\": \"Thieu hoac sai X-API-Key\"}", ZonedDateTime.now().toString());
+            String json = String.format(
+                    "{\"timestamp\": \"%s\", \"status\": 403, \"error\": \"Forbidden\", \"message\": \"Thieu hoac sai X-API-Key\"}",
+                    ZonedDateTime.now().toString());
             response.getWriter().write(json);
             return;
         }

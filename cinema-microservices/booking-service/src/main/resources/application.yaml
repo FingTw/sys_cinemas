@@ -1,0 +1,113 @@
+spring:
+  application:
+    name: cinema-booking
+  jackson:
+    time-zone: ${APP_TIMEZONE}
+  jpa:
+    properties:
+      hibernate:
+        jdbc:
+          time_zone: ${APP_TIMEZONE}
+        default_schema: booking
+    hibernate:
+      ddl-auto: none
+    show-sql: false
+  flyway:
+    enabled: true
+    schemas: booking
+    create-schemas: true
+    baseline-on-migrate: true
+    repair-on-migrate: true
+  config:
+    import: "optional:file:../../.env[.properties]"
+  profiles:
+    active: dev
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS}
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+      properties:
+        spring.json.add.type.headers: true
+logging:
+  level:
+    org.flywaydb: DEBUG
+    springframework.boot.autoconfigure.flyway: DEBUG
+
+camunda.bpm:
+  admin-user:
+    id: admin
+    password: ${CAMUNDA_ADMIN_PASSWORD}
+    firstName: Admin
+    lastName: Admin
+    email: admin@cinema.com
+  job-execution:
+    enabled: true
+    active: true
+  database:
+    schema-update: true
+  generic-properties:
+    properties:
+      enforceHistoryTimeToLive: false
+
+# ── Feign: fail-fast thay vì chờ 30s default ──────────────────
+feign:
+  client:
+    config:
+      default:
+        connectTimeout: 2000   # 2s để kết nối
+        readTimeout: 5000      # 5s để đọc response
+
+# ── Circuit Breaker: ngắt tự động khi downstream lỗi ──────────
+resilience4j:
+  circuitbreaker:
+    instances:
+      showtimeService:
+        registerHealthIndicator: true
+        slidingWindowSize: 10
+        minimumNumberOfCalls: 5
+        permittedNumberOfCallsInHalfOpenState: 3
+        automaticTransitionFromOpenToHalfOpenEnabled: true
+        waitDurationInOpenState: 5s
+        failureRateThreshold: 50
+        eventConsumerBufferSize: 10
+      facilityService:
+        registerHealthIndicator: true
+        slidingWindowSize: 10
+        minimumNumberOfCalls: 5
+        permittedNumberOfCallsInHalfOpenState: 3
+        automaticTransitionFromOpenToHalfOpenEnabled: true
+        waitDurationInOpenState: 5s
+        failureRateThreshold: 50
+        eventConsumerBufferSize: 10
+  # ── Retry: thử lại 3 lần với exponential backoff ─────────────
+  retry:
+    instances:
+      showtimeService:
+        maxAttempts: 3
+        waitDuration: 500ms
+        enableExponentialBackoff: true
+        exponentialBackoffMultiplier: 2   # 500ms → 1s → 2s
+        retryExceptions:
+          - feign.FeignException.ServiceUnavailable
+          - feign.RetryableException
+          - java.net.ConnectException
+          - java.net.SocketTimeoutException
+      facilityService:
+        maxAttempts: 3
+        waitDuration: 500ms
+        enableExponentialBackoff: true
+        exponentialBackoffMultiplier: 2
+        retryExceptions:
+          - feign.FeignException.ServiceUnavailable
+          - feign.RetryableException
+          - java.net.ConnectException
+          - java.net.SocketTimeoutException
+
+management:
+  tracing:
+    sampling:
+      probability: 1.0
+  otlp:
+    tracing:
+      endpoint: ${OTEL_EXPORTER_OTLP_ENDPOINT:http://localhost:4318/v1/traces}

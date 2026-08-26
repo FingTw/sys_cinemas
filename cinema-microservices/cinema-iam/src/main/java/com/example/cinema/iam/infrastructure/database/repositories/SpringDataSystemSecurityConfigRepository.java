@@ -1,9 +1,0 @@
-package com.example.cinema.iam.infrastructure.database.repositories;
-
-import com.example.cinema.iam.infrastructure.database.entities.SystemSecurityConfigJpaEntity;
-import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.stereotype.Repository;
-
-@Repository
-public interface SpringDataSystemSecurityConfigRepository extends JpaRepository<SystemSecurityConfigJpaEntity, String> {
-}

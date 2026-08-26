@@ -30,7 +30,9 @@ public class ClientSecurityGuardFilter implements GlobalFilter, Ordered {
     public Mono<Void> filter(ServerWebExchange exchange, GatewayFilterChain chain) {
         ServerHttpRequest request = exchange.getRequest();
         String path = request.getURI().getPath();
-
+        if (path.startsWith("/api/v1/auth/login") || path.startsWith("/api/v1/auth/callback")) {
+            return chain.filter(exchange);
+        }
         // Get dynamic configuration values
         String expectedClientKey = dynamicSecurityConfiguration.getExpectedClientKey();
         List<String> protectedPaths = dynamicSecurityConfiguration.getProtectedPaths();
@@ -45,7 +47,8 @@ public class ClientSecurityGuardFilter implements GlobalFilter, Ordered {
                 clientKey = request.getHeaders().getFirst("X-API-Key");
             }
             if (clientKey == null || !clientKey.equals(expectedClientKey)) {
-                log.warn("Blocked direct access to public endpoint [{}] from IP: {}. Missing or invalid X-Client-Key/X-API-Key.",
+                log.warn(
+                        "Blocked direct access to public endpoint [{}] from IP: {}. Missing or invalid X-Client-Key/X-API-Key.",
                         path, request.getRemoteAddress());
                 ServerHttpResponse response = exchange.getResponse();
                 response.setStatusCode(HttpStatus.FORBIDDEN);
